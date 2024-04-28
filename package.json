@@ -1,0 +1,10 @@
+{
+  "name": "mytonwallet-giveaways-vladfaust",
+  "description": "A MyTonWallet Giveaways contest entry",
+  "author": "Vladislav Kosarev <vladfaust.com>",
+  "license": "UNLICENSED",
+  "private": true,
+  "workspaces": [
+    "packages/api"
+  ]
+}
