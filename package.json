@@ -5,6 +5,7 @@
   "license": "UNLICENSED",
   "private": true,
   "workspaces": [
-    "packages/api"
+    "packages/api",
+    "packages/checkin-web"
   ]
 }

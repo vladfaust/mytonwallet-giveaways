@@ -8,3 +8,7 @@ The following are the contest requirements:
 - TypeScript
 - Sequelize
 - PostgreSQL
+
+- Redis
+  I've opted in using Redis to store auth payloads for Ton proofs.
+  It is a natural choice for a potentially distributed application.
