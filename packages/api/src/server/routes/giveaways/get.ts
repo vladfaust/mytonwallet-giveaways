@@ -1,14 +1,19 @@
+import decimal from "decimal.js-light";
 import { Router } from "express";
 import { z } from "zod";
+import { GIVEAWAY_LINK_TEMPLATE, MAIN_ADDRESS } from "../../../env.js";
 import { sequelize } from "../../../lib/sequelize.js";
 import { zodTypedParse } from "../../../lib/utils.js";
 import { Giveaway } from "../../../models/giveaway.js";
 import { Participant } from "../../../models/participant.js";
 import { NewGiveawaySchema, sendError } from "./_common.js";
+const { Decimal } = decimal;
 
 const GiveawaySchema = NewGiveawaySchema.extend({
   status: z.enum(["pending", "active", "finished"]),
   participantCount: z.number().int().nonnegative(),
+  giveawayLink: z.string().url(),
+  topUpLink: z.string().url(),
 });
 
 export default Router().get("/giveaways/:giveawayId", async (req, res) => {
@@ -25,6 +30,11 @@ export default Router().get("/giveaways/:giveawayId", async (req, res) => {
     ],
 
     attributes: [
+      "id",
+      "type",
+      "tokenAddress",
+      "amount",
+      "receiverCount",
       "status",
       [
         sequelize.fn("COUNT", sequelize.col("Participants.id")),
@@ -43,12 +53,14 @@ export default Router().get("/giveaways/:giveawayId", async (req, res) => {
     zodTypedParse(GiveawaySchema, {
       type: giveaway.type,
       status: giveaway.status,
-      endsAt: giveaway.endsAt ?? undefined,
-      tokenAddress: giveaway.tokenAddress ?? undefined,
+      endsAt: giveaway.endsAt ?? null,
+      tokenAddress: giveaway.tokenAddress ?? null,
       amount: giveaway.amount,
       receiverCount: giveaway.receiverCount,
-      taskUrl: giveaway.taskUrl ?? undefined,
-      participantCount: giveaway.get("n_participants") as number,
+      taskUrl: giveaway.taskUrl ?? null,
+      participantCount: parseInt(giveaway.get("n_participants") as string),
+      giveawayLink: GIVEAWAY_LINK_TEMPLATE.replace(":id", giveaway.id),
+      topUpLink: `ton://transfer/${MAIN_ADDRESS}?token=${giveaway.tokenAddress}&amount=${new Decimal(giveaway.amount).mul(giveaway.receiverCount)}&comment=${giveaway.id}`,
     }),
   );
 });

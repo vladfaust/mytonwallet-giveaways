@@ -6,6 +6,7 @@
   "private": true,
   "workspaces": [
     "packages/api",
-    "packages/checkin-web"
+    "packages/checkin-web",
+    "packages/manage-web"
   ]
 }

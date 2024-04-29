@@ -1,4 +1,5 @@
 import bodyParser from "body-parser";
+import decimal from "decimal.js-light";
 import { Router } from "express";
 import { nanoid } from "nanoid";
 import { z } from "zod";
@@ -7,6 +8,7 @@ import { GIVEAWAY_LINK_TEMPLATE, MAIN_ADDRESS, SECRET } from "../../../env.js";
 import { zodTypedParse } from "../../../lib/utils.js";
 import { Giveaway } from "../../../models/giveaway.js";
 import { NewGiveawaySchema, sendError } from "./_common.js";
+const { Decimal } = decimal;
 
 const RequestBodySchema = z.object({
   giveaway: NewGiveawaySchema.refine(
@@ -17,9 +19,10 @@ const RequestBodySchema = z.object({
 });
 
 const SuccessResponseSchema = z.object({
+  id: z.string(),
   giveawayLink: z.string().url(),
   topUpLink: z.string().url(),
-  taskToken: z.string().optional(),
+  taskToken: z.string().nullable(),
 });
 
 export default Router()
@@ -42,9 +45,10 @@ export default Router()
 
     return res.json(
       zodTypedParse(SuccessResponseSchema, {
+        id: giveaway.id,
         giveawayLink: GIVEAWAY_LINK_TEMPLATE.replace(":id", giveaway.id),
-        topUpLink: `ton://transfer/${MAIN_ADDRESS}?token=${giveaway.tokenAddress}&amount=${giveaway.amount * giveaway.receiverCount}&comment=${giveaway.id}`,
-        taskToken: giveaway.taskToken ?? undefined,
+        topUpLink: `ton://transfer/${MAIN_ADDRESS}?token=${giveaway.tokenAddress}&amount=${new Decimal(giveaway.amount).mul(giveaway.receiverCount)}&comment=${giveaway.id}`,
+        taskToken: giveaway.taskToken,
       }),
     );
   });

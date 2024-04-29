@@ -8,7 +8,7 @@ export class Giveaway extends Model {
   declare status: CreationOptional<"pending" | "active" | "finished">;
   declare endsAt: Date | null;
   declare tokenAddress: string | null;
-  declare amount: number;
+  declare amount: string;
   declare receiverCount: number;
   declare taskUrl: string | null;
   declare taskToken: string | null;
@@ -21,7 +21,7 @@ Giveaway.init(
     id: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: nanoid(),
+      defaultValue: () => nanoid(),
       primaryKey: true,
     },
     type: {

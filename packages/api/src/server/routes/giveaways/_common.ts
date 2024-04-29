@@ -4,11 +4,16 @@ import { zodTypedParse } from "../../../lib/utils.js";
 
 export const NewGiveawaySchema = z.object({
   type: z.enum(["instant", "lottery"]),
-  endsAt: z.date().optional(),
-  tokenAddress: z.string().optional(),
-  amount: z.number().positive(),
+  endsAt: z
+    .string()
+    .transform((x) => new Date(x))
+    .nullable(),
+  tokenAddress: z.string().nullable(),
+  amount: z.string().refine((x) => !isNaN(parseFloat(x)) && parseFloat(x) > 0, {
+    message: "Amount must be a positive decimal number",
+  }),
   receiverCount: z.number().int().positive(),
-  taskUrl: z.string().url().optional(),
+  taskUrl: z.string().url().nullable(),
 });
 
 export const SuccessResponseSchema = z.object({
