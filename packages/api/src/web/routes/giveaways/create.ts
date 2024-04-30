@@ -4,7 +4,8 @@ import { Router } from "express";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-import { GIVEAWAY_LINK_TEMPLATE, MAIN_ADDRESS, SECRET } from "../../../env.js";
+import { GIVEAWAY_LINK_TEMPLATE, SECRET } from "../../../env.js";
+import { bounceable, contract, testOnly } from "../../../lib/ton.js";
 import { zodTypedParse } from "../../../lib/utils.js";
 import { Giveaway } from "../../../models/giveaway.js";
 import { NewGiveawaySchema, sendError } from "./_common.js";
@@ -47,7 +48,7 @@ export default Router()
       zodTypedParse(SuccessResponseSchema, {
         id: giveaway.id,
         giveawayLink: GIVEAWAY_LINK_TEMPLATE.replace(":id", giveaway.id),
-        topUpLink: `ton://transfer/${MAIN_ADDRESS}?token=${giveaway.tokenAddress}&amount=${new Decimal(giveaway.amount).mul(giveaway.receiverCount)}&comment=${giveaway.id}`,
+        topUpLink: `ton://transfer/${contract.address.toString({ testOnly, bounceable })}?token=${giveaway.tokenAddress}&amount=${new Decimal(giveaway.amount).mul(giveaway.receiverCount)}&comment=${giveaway.id}`,
         taskToken: giveaway.taskToken,
       }),
     );

@@ -25,6 +25,7 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
+    "@ton/crypto": "^3.2.0",
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",
     "decimal.js-light": "^2.5.1",

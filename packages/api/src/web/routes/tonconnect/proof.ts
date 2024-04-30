@@ -7,7 +7,7 @@ import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { JWT_SECRET } from "../../../env.js";
 import { redis } from "../../../lib/redis.js";
-import { verifySignature } from "../../../lib/ton.js";
+import { verifySignature } from "../../../lib/tonconnect.js";
 import { redisProofKey } from "./_common.js";
 
 const ProofSchema = z.object({
