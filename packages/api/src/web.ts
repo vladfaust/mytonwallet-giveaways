@@ -1,7 +1,7 @@
 import express from "express";
 import { HOST, PORT } from "./env.js";
-import giveaways from "./server/routes/giveaways.js";
-import tonconnect from "./server/routes/tonconnect.js";
+import giveaways from "./web/routes/giveaways.js";
+import tonconnect from "./web/routes/tonconnect.js";
 
 const app = express();
 
