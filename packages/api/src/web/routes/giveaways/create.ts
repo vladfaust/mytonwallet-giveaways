@@ -4,7 +4,7 @@ import { Router } from "express";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-import { GIVEAWAY_LINK_TEMPLATE, SECRET } from "../../../env.js";
+import { GIVEAWAY_LINK_TEMPLATE, GIVEAWAY_SECRET } from "../../../env.js";
 import { bounceable, contract, testOnly } from "../../../lib/ton.js";
 import { zodTypedParse } from "../../../lib/utils.js";
 import { Giveaway } from "../../../models/giveaway.js";
@@ -35,7 +35,7 @@ export default Router()
       return sendError(res, 400, fromError(body.error).toString());
     }
 
-    if (body.data.secret !== SECRET) {
+    if (body.data.secret !== GIVEAWAY_SECRET) {
       return sendError(res, 400, "Invalid secret");
     }
 

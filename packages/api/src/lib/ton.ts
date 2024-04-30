@@ -2,7 +2,7 @@ import { mnemonicToWalletKey } from "@ton/crypto";
 import { Address, TonClient, WalletContractV4, fromNano } from "ton";
 import {
   TON_CLIENT_ENDPOINT,
-  TON_IS_MAINNET,
+  TON_MAINNET,
   TON_MAIN_ADDRESS_MNEMONICS,
   TON_WORKCHAIN,
 } from "../env.js";
@@ -16,7 +16,7 @@ const walletContract = WalletContractV4.create({
 });
 
 export const contract = client.open(walletContract);
-export const testOnly = !TON_IS_MAINNET;
+export const testOnly = !TON_MAINNET;
 export const bounceable = false; // NOTE: May be true when the wallet is a real contract.
 
 /**
