@@ -6,5 +6,5 @@
     "tsconfig.json"
   ],
   "ext": "*",
-  "exec": "npm run build && npx nf start web"
+  "exec": "npm run build && npx nf start web,worker"
 }

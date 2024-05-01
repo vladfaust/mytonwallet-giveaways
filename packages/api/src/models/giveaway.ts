@@ -1,14 +1,23 @@
 import { nanoid } from "nanoid";
-import { CreationOptional, DataTypes, Model } from "sequelize";
+import {
+  CreationOptional,
+  DataTypes,
+  InferAttributes,
+  InferCreationAttributes,
+  Model,
+} from "sequelize";
 import { sequelize } from "../lib/sequelize.js";
 
-export class Giveaway extends Model {
+export class Giveaway extends Model<
+  InferAttributes<Giveaway>,
+  InferCreationAttributes<Giveaway>
+> {
   declare id: CreationOptional<string>;
   declare type: "instant" | "lottery";
   declare status: CreationOptional<"pending" | "active" | "finished">;
   declare endsAt: Date | null;
   declare tokenAddress: string | null;
-  declare amount: string;
+  declare amount: bigint;
   declare receiverCount: number;
   declare taskUrl: string | null;
   declare taskToken: string | null;
@@ -41,7 +50,7 @@ Giveaway.init(
       comment: "The token address for the giveaway, or NULL for Toncoin",
     },
     amount: {
-      type: DataTypes.DECIMAL,
+      type: DataTypes.BIGINT,
       comment: "The amount of the giveaway, per receiver",
       allowNull: false,
     },
@@ -57,6 +66,16 @@ Giveaway.init(
     },
     taskToken: {
       type: DataTypes.STRING,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
     },
   },
   {

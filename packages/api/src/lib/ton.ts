@@ -1,5 +1,7 @@
 import { mnemonicToWalletKey } from "@ton/crypto";
-import { Address, TonClient, WalletContractV4, fromNano } from "ton";
+import { AxiosError } from "axios";
+import pRetry from "p-retry";
+import { Address, Cell, TonClient, WalletContractV4, fromNano } from "ton";
 import {
   TON_CLIENT_ENDPOINT,
   TON_MAINNET,
@@ -31,8 +33,62 @@ export function prettifyAddress(
   return `${userFriendlyAddress.slice(0, 5)}…${userFriendlyAddress.slice(-4)}`;
 }
 
-contract.getBalance().then((balance) => {
-  console.log(
-    `✅ TON address: ${prettifyAddress(contract.address, testOnly, bounceable)}, balance: ${fromNano(balance)} (${testOnly ? "test" : "main"}net)`,
-  );
-});
+/**
+ * Wrap a {@link TonClient} request with retries and error handling.
+ */
+export async function wrapTonClientRequest<T>(
+  callable: () => Promise<T>,
+  log = console.log,
+) {
+  return pRetry(callable, {
+    onFailedAttempt: (error) => {
+      // NOTE: {@link AxiosError} (`ton` client uses `axios` under the hood)
+      // is an interface, so we can't use `instanceof`.
+      if ("isAxiosError" in error) {
+        const err = error as unknown as AxiosError;
+        if (!err.response) throw error; // No response, abort.
+
+        log(
+          `Ton client request failed (${err.response.status} ${err.response.statusText}), ${error.retriesLeft} retries left: ${JSON.stringify(err.response.data)}`,
+        );
+
+        if (
+          err.response.status === 429 ||
+          (err.response.status >= 500 && err.response.status < 600)
+        ) {
+          return; // Retry.
+        }
+      }
+
+      throw error; // Otherwise, abort.
+    },
+  });
+}
+
+/**
+ * Parse the message body string from a cell.
+ * If body begins with `0:uint32`, it is parsed as a UTF-8 string.
+ * Otherwise, it is parsed as a {@link Buffer}.
+ */
+export function parseMessageBodyString(body: Cell): string | Buffer {
+  const bs = body.beginParse();
+  const head = bs.loadUint(32);
+
+  if (head === 0) {
+    const bytes = bs.loadBuffer(bs.remainingBits / 8);
+    bs.endParse();
+    return Buffer.from(bytes).toString("utf-8");
+  } else {
+    const bytes = bs.loadBuffer(bs.remainingBits / 8);
+    bs.endParse();
+    return Buffer.from(bytes);
+  }
+}
+
+wrapTonClientRequest(() =>
+  contract.getBalance().then((balance) => {
+    console.log(
+      `✅ TON address: ${prettifyAddress(contract.address, testOnly, bounceable)}, balance: ${fromNano(balance)} (${testOnly ? "test" : "main"}net)`,
+    );
+  }),
+);

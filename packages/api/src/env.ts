@@ -19,6 +19,9 @@ export const {
   HOST,
   PORT,
 
+  BULL_DASHBOARD_USERNAME,
+  BULL_DASHBOARD_PASSWORD,
+
   DATABASE_URL,
   REDIS_URL,
 
@@ -44,6 +47,9 @@ export const {
 
     DATABASE_URL: z.string().url(),
     REDIS_URL: z.string().url(),
+
+    BULL_DASHBOARD_USERNAME: z.string(),
+    BULL_DASHBOARD_PASSWORD: z.string(),
 
     TON_MAINNET: booleanString().optional().default("false"),
     TON_WORKCHAIN: z

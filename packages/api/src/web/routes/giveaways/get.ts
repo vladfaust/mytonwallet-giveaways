@@ -1,5 +1,5 @@
-import decimal from "decimal.js-light";
 import { Router } from "express";
+import { fromNano } from "ton";
 import { z } from "zod";
 import { GIVEAWAY_LINK_TEMPLATE } from "../../../env.js";
 import { sequelize } from "../../../lib/sequelize.js";
@@ -8,7 +8,6 @@ import { zodTypedParse } from "../../../lib/utils.js";
 import { Giveaway } from "../../../models/giveaway.js";
 import { Participant } from "../../../models/participant.js";
 import { NewGiveawaySchema, sendError } from "./_common.js";
-const { Decimal } = decimal;
 
 const GiveawaySchema = NewGiveawaySchema.extend({
   status: z.enum(["pending", "active", "finished"]),
@@ -56,14 +55,12 @@ export default Router().get("/giveaways/:giveawayId", async (req, res) => {
       status: giveaway.status,
       endsAt: giveaway.endsAt ?? null,
       tokenAddress: giveaway.tokenAddress ?? null,
-      amount: giveaway.amount,
+      amount: fromNano(giveaway.amount),
       receiverCount: giveaway.receiverCount,
       taskUrl: giveaway.taskUrl ?? null,
       participantCount: parseInt(giveaway.get("n_participants") as string),
       giveawayLink: GIVEAWAY_LINK_TEMPLATE.replace(":id", giveaway.id),
-
-      // TODO: Use toNano.
-      topUpLink: `ton://transfer/${contract.address.toString({ testOnly, bounceable })}?token=${giveaway.tokenAddress}&amount=${new Decimal(giveaway.amount).mul(giveaway.receiverCount)}&comment=${giveaway.id}`,
+      topUpLink: `ton://transfer/${contract.address.toString({ testOnly, bounceable })}?token=${giveaway.tokenAddress}&amount=${giveaway.amount * BigInt(giveaway.receiverCount)}&comment=${giveaway.id}`,
     }),
   );
 });

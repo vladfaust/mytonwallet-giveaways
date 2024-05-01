@@ -1,7 +1,7 @@
 import bodyParser from "body-parser";
-import decimal from "decimal.js-light";
 import { Router } from "express";
 import { nanoid } from "nanoid";
+import { toNano } from "ton";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import { GIVEAWAY_LINK_TEMPLATE, GIVEAWAY_SECRET } from "../../../env.js";
@@ -9,7 +9,6 @@ import { bounceable, contract, testOnly } from "../../../lib/ton.js";
 import { zodTypedParse } from "../../../lib/utils.js";
 import { Giveaway } from "../../../models/giveaway.js";
 import { NewGiveawaySchema, sendError } from "./_common.js";
-const { Decimal } = decimal;
 
 const RequestBodySchema = z.object({
   giveaway: NewGiveawaySchema.refine(
@@ -41,6 +40,7 @@ export default Router()
 
     const giveaway = await Giveaway.create({
       ...body.data.giveaway,
+      amount: toNano(body.data.giveaway.amount),
       taskToken: body.data.giveaway.taskUrl ? nanoid() : undefined,
     });
 
@@ -48,7 +48,7 @@ export default Router()
       zodTypedParse(SuccessResponseSchema, {
         id: giveaway.id,
         giveawayLink: GIVEAWAY_LINK_TEMPLATE.replace(":id", giveaway.id),
-        topUpLink: `ton://transfer/${contract.address.toString({ testOnly, bounceable })}?token=${giveaway.tokenAddress}&amount=${new Decimal(giveaway.amount).mul(giveaway.receiverCount)}&comment=${giveaway.id}`,
+        topUpLink: `ton://transfer/${contract.address.toString({ testOnly, bounceable })}?token=${giveaway.tokenAddress}&amount=${giveaway.amount * BigInt(giveaway.receiverCount)}&comment=${giveaway.id}`,
         taskToken: giveaway.taskToken,
       }),
     );
