@@ -67,7 +67,7 @@ export default Router()
     }
 
     const jwt = await new jose.SignJWT({
-      address: body.data.address,
+      address: address.toRawString(),
     })
       .setProtectedHeader({ alg: "HS256" })
       .setIssuedAt()
