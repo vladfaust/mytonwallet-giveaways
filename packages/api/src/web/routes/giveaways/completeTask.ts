@@ -1,5 +1,6 @@
 import bodyParser from "body-parser";
 import { Router } from "express";
+import { Address } from "ton";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import { sequelize } from "../../../lib/sequelize.js";
@@ -10,7 +11,7 @@ import { SuccessResponseSchema, sendError } from "./_common.js";
 
 const RequestBodySchema = z.object({
   taskToken: z.string(),
-  receiverAddress: z.string(),
+  receiverAddress: z.string().transform((x) => Address.parse(x)),
 });
 
 export default Router()
@@ -22,25 +23,27 @@ export default Router()
       return sendError(res, 400, fromError(body.error).toString());
     }
 
-    const giveaway = await Giveaway.findOne({
-      where: {
-        id: req.params.giveawayId,
-        taskToken: body.data.taskToken,
-      },
-    });
-
-    if (!giveaway) {
-      return sendError(res, 400, "Invalid task token");
-    }
-
     let error: string | undefined;
-    await sequelize.transaction(async (t) => {
+    await sequelize.transaction(async (transaction) => {
+      const giveaway = await Giveaway.findOne({
+        where: {
+          id: req.params.giveawayId,
+          taskToken: body.data.taskToken,
+        },
+      });
+
+      if (!giveaway) {
+        error = "Invalid task token";
+        return;
+      }
+
       const participant = await Participant.findOne({
         where: {
           giveawayId: giveaway.id,
-          receiverAddress: body.data.receiverAddress,
+          receiverAddress: body.data.receiverAddress.toRaw(),
         },
-        transaction: t,
+        transaction,
+        lock: true,
       });
 
       if (!participant) {
@@ -54,8 +57,15 @@ export default Router()
       }
 
       await participant.update(
-        { status: "awaitingPayment" },
-        { transaction: t },
+        {
+          // If the giveaway is instant, the participant is ready to receive the prize.
+          // If the giveaway is a lottery, shall wait for the lottery to be drawn.
+          status:
+            giveaway.type === "instant" ? "awaitingPayment" : "awaitingLottery",
+        },
+        {
+          transaction: transaction,
+        },
       );
     });
 

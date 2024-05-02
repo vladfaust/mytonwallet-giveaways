@@ -2,18 +2,28 @@ import {
   CreationOptional,
   DataTypes,
   ForeignKey,
+  InferAttributes,
+  InferCreationAttributes,
   Model,
   NonAttribute,
 } from "sequelize";
 import { sequelize } from "../lib/sequelize.js";
 import { Giveaway } from "./giveaway.js";
 
-export class Participant extends Model {
+export class Participant extends Model<
+  InferAttributes<Participant>,
+  InferCreationAttributes<Participant>
+> {
   declare id: CreationOptional<number>;
   declare giveawayId: ForeignKey<Giveaway["id"]>;
   declare giveaway?: NonAttribute<Giveaway>;
-  declare receiverAddress: string;
-  declare status: "awaitingTask" | "awaitingPayment" | "paid" | "lost";
+  declare receiverAddress: Buffer;
+  declare status:
+    | "awaitingTask"
+    | "awaitingLottery" // NOTE: Out-of-spec.
+    | "awaitingPayment"
+    | "paid"
+    | "lost";
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 }
@@ -34,12 +44,22 @@ Participant.init(
       },
     },
     receiverAddress: {
-      type: DataTypes.STRING,
+      type: DataTypes.BLOB,
       allowNull: false,
     },
     status: {
       type: DataTypes.ENUM("awaitingTask", "awaitingPayment", "paid", "lost"),
       allowNull: false,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
     },
   },
   {

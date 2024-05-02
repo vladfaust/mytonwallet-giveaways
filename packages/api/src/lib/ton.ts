@@ -10,7 +10,7 @@ import {
 } from "../env.js";
 
 export const client = new TonClient({ endpoint: TON_CLIENT_ENDPOINT });
-const keyPair = await mnemonicToWalletKey(TON_MAIN_ADDRESS_MNEMONICS);
+export const keyPair = await mnemonicToWalletKey(TON_MAIN_ADDRESS_MNEMONICS);
 
 const walletContract = WalletContractV4.create({
   workchain: TON_WORKCHAIN,

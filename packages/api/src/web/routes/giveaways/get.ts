@@ -7,11 +7,9 @@ import { bounceable, contract, testOnly } from "../../../lib/ton.js";
 import { zodTypedParse } from "../../../lib/utils.js";
 import { Giveaway } from "../../../models/giveaway.js";
 import { Participant } from "../../../models/participant.js";
-import { NewGiveawaySchema, sendError } from "./_common.js";
+import { GiveawaySchema, sendError } from "./_common.js";
 
-const GiveawaySchema = NewGiveawaySchema.extend({
-  status: z.enum(["pending", "active", "finished"]),
-  participantCount: z.number().int().nonnegative(),
+const SuccessResponseSchema = GiveawaySchema.extend({
   giveawayLink: z.string().url(),
   topUpLink: z.string().url(),
 });
@@ -50,7 +48,8 @@ export default Router().get("/giveaways/:giveawayId", async (req, res) => {
   }
 
   return res.json(
-    zodTypedParse(GiveawaySchema, {
+    zodTypedParse(SuccessResponseSchema, {
+      id: giveaway.id,
       type: giveaway.type,
       status: giveaway.status,
       endsAt: giveaway.endsAt ?? null,

@@ -17,6 +17,12 @@ export const NewGiveawaySchema = z.object({
   taskUrl: z.string().url().nullable(),
 });
 
+export const GiveawaySchema = NewGiveawaySchema.extend({
+  id: z.string(),
+  status: z.enum(["pending", "active", "finished"]),
+  participantCount: z.number().int().nonnegative(),
+});
+
 export const SuccessResponseSchema = z.object({
   ok: z.literal(true),
 });
