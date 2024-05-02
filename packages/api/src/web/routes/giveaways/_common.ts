@@ -1,7 +1,9 @@
 import { Response } from "express";
+import { Transaction } from "sequelize";
 import { toNano } from "ton";
 import { z } from "zod";
 import { zodTypedParse } from "../../../lib/utils.js";
+import { Participant } from "../../../models/participant.js";
 
 export const NewGiveawaySchema = z.object({
   type: z.enum(["instant", "lottery"]),
@@ -37,4 +39,19 @@ export function sendError(res: Response, statusCode: number, error: string) {
       error,
     }),
   );
+}
+
+export async function countParticipants(
+  giveawayId: string,
+  transaction?: Transaction,
+) {
+  return Participant.count({
+    where: {
+      giveawayId,
+
+      // NOTE: Those with status "awaitingTask" are not counted.
+      status: ["awaitingLottery", "awaitingPayment", "paid", "lost"],
+    },
+    transaction,
+  });
 }

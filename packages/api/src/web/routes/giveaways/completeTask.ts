@@ -7,10 +7,14 @@ import { sequelize } from "../../../lib/sequelize.js";
 import { zodTypedParse } from "../../../lib/utils.js";
 import { Giveaway } from "../../../models/giveaway.js";
 import { Participant } from "../../../models/participant.js";
-import { SuccessResponseSchema, sendError } from "./_common.js";
+import {
+  SuccessResponseSchema,
+  countParticipants,
+  sendError,
+} from "./_common.js";
 
 const RequestBodySchema = z.object({
-  taskToken: z.string(),
+  taskToken: z.string().min(1),
   receiverAddress: z.string().transform((x) => Address.parse(x)),
 });
 
@@ -23,18 +27,22 @@ export default Router()
       return sendError(res, 400, fromError(body.error).toString());
     }
 
-    let error: string | undefined;
-    await sequelize.transaction(async (transaction) => {
+    const error = await sequelize.transaction(async (transaction) => {
       const giveaway = await Giveaway.findOne({
         where: {
+          // OPTIMIZE: Add index.
           id: req.params.giveawayId,
           taskToken: body.data.taskToken,
         },
+        transaction,
       });
 
       if (!giveaway) {
-        error = "Invalid task token";
-        return;
+        return "Invalid task token";
+      }
+
+      if (giveaway.status !== "active") {
+        return "Giveaway is not active";
       }
 
       const participant = await Participant.findOne({
@@ -47,13 +55,20 @@ export default Router()
       });
 
       if (!participant) {
-        error = "Invalid receiver address";
-        return;
+        return "Invalid receiver address";
       }
 
       if (participant.status !== "awaitingTask") {
-        error = "Invalid participant status";
-        return false;
+        return "Invalid participant status";
+      }
+
+      const participantCount = await countParticipants(
+        giveaway.id,
+        transaction,
+      );
+
+      if (participantCount === giveaway.receiverCount) {
+        return "Giveaway is full";
       }
 
       await participant.update(
@@ -63,9 +78,7 @@ export default Router()
           status:
             giveaway.type === "instant" ? "awaitingPayment" : "awaitingLottery",
         },
-        {
-          transaction: transaction,
-        },
+        { transaction },
       );
     });
 

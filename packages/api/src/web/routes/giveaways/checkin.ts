@@ -12,6 +12,7 @@ import { Participant } from "../../../models/participant.js";
 import {
   GiveawaySchema,
   SuccessResponseSchema as SuccessResponseSchemaBase,
+  countParticipants,
   sendError,
 } from "./_common.js";
 
@@ -61,14 +62,14 @@ export default Router()
     }
 
     const { address: addressString } = jwt.payload as { address: string };
-    console.debug(
-      `User with address ${addressString} is checking in to giveaway ${req.params.giveawayId}`,
+    console.log(
+      `User with address ${addressString} is trying to check in to giveaway ${req.params.giveawayId}`,
     );
 
+    let participantCount: number = 0;
     const result = await sequelize.transaction(async (transaction) => {
       const giveaway = await Giveaway.findOne({
         where: { id: req.params.giveawayId },
-        include: [{ model: Participant, attributes: [] }],
         attributes: [
           "id",
           "type",
@@ -78,57 +79,62 @@ export default Router()
           "status",
           "endsAt",
           "taskUrl",
-          [
-            sequelize.fn("COUNT", sequelize.col("Participants.id")),
-            "n_participants",
-          ],
         ],
-        group: "Giveaway.id",
         transaction,
       });
 
       if (!giveaway) {
-        return sendError(res, 404, "Giveaway not found");
+        // NOTE: (Spec) I'd rather return code 404 here.
+        return "Giveaway not found";
       }
 
       if (giveaway.status !== "active") {
-        return sendError(res, 400, "Giveaway is not active");
+        return "Giveaway is not active";
       }
 
       if (giveaway.endsAt && giveaway.endsAt < new Date()) {
-        return sendError(res, 400, "Giveaway has ended");
+        return "Giveaway has ended";
       }
 
       let participant = await Participant.findOne({
         where: {
           giveawayId: giveaway.id,
-          receiverAddress: Address.parseRaw(addressString).toRaw(),
+          receiverAddress: Address.parse(addressString).toRaw(),
         },
         transaction,
       });
 
       if (participant) {
-        return sendError(res, 429, "Already checked in");
+        return "Already checked in";
+      }
+
+      participantCount = await countParticipants(giveaway.id, transaction);
+      if (participantCount === giveaway.receiverCount) {
+        return "Giveaway is full";
       }
 
       let participantStatus: Participant["status"];
       if (giveaway.taskUrl) {
-        participantStatus = "awaitingTask"; // Waiting for the task completion.
+        // Waiting for the task completion.
+        participantStatus = "awaitingTask";
+        // participantCount++; // We don't count those awaiting the task.
       } else if (giveaway.type === "instant") {
-        participantStatus = "awaitingPayment"; // Ready for payout.
+        // Ready for payout.
+        participantStatus = "awaitingPayment";
+        participantCount++;
       } else {
-        participantStatus = "awaitingLottery"; // Waiting for the lottery results.
+        // Waiting for the lottery results.
+        participantStatus = "awaitingLottery";
+        participantCount++;
       }
 
-      await Participant.create(
+      participant = await Participant.create(
         {
           giveawayId: giveaway.id,
-          receiverAddress: Address.parseRaw(addressString).toRaw(),
+          receiverAddress: Address.parse(addressString).toRaw(),
           status: participantStatus,
         },
-        {
-          transaction,
-        },
+        { transaction },
       );
 
       return {
@@ -139,7 +145,9 @@ export default Router()
       };
     });
 
-    if (!result) return;
+    if (typeof result === "string") {
+      return sendError(res, 400, result);
+    }
 
     return res.json(
       zodTypedParse(SuccessResponseSchema, {
@@ -153,9 +161,7 @@ export default Router()
           amount: fromNano(result.giveaway.amount),
           receiverCount: result.giveaway.receiverCount,
           taskUrl: result.giveaway.taskUrl ?? null,
-          participantCount: parseInt(
-            result.giveaway.get("n_participants") as string,
-          ),
+          participantCount,
         },
         participant: {
           status: result.participant.status,
