@@ -5,7 +5,14 @@ import { GIVEAWAY_LINK_TEMPLATE } from "../../../env.js";
 import { bounceable, contract, testOnly } from "../../../lib/ton.js";
 import { zodTypedParse } from "../../../lib/utils.js";
 import { Giveaway } from "../../../models/giveaway.js";
-import { GiveawaySchema, countParticipants, sendError } from "./_common.js";
+import { countParticipants, sendError } from "./_common.js";
+import { NewGiveawaySchema } from "./create.js";
+
+export const GiveawaySchema = NewGiveawaySchema.extend({
+  id: z.string(),
+  status: z.enum(["pending", "active", "finished"]),
+  participantCount: z.number().int().nonnegative(),
+});
 
 const SuccessResponseSchema = GiveawaySchema.extend({
   giveawayLink: z.string().url(),

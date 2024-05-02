@@ -10,11 +10,11 @@ import { zodTypedParse } from "../../../lib/utils.js";
 import { Giveaway } from "../../../models/giveaway.js";
 import { Participant } from "../../../models/participant.js";
 import {
-  GiveawaySchema,
   SuccessResponseSchema as SuccessResponseSchemaBase,
   countParticipants,
   sendError,
 } from "./_common.js";
+import { GiveawaySchema } from "./get.js";
 
 const RequestBodySchema = z.object({
   // TODO: Validate captcha.

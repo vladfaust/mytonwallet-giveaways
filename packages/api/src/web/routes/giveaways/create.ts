@@ -8,7 +8,21 @@ import { GIVEAWAY_LINK_TEMPLATE, GIVEAWAY_SECRET } from "../../../env.js";
 import { bounceable, contract, testOnly } from "../../../lib/ton.js";
 import { zodTypedParse } from "../../../lib/utils.js";
 import { Giveaway } from "../../../models/giveaway.js";
-import { NewGiveawaySchema, sendError } from "./_common.js";
+import { sendError } from "./_common.js";
+
+export const NewGiveawaySchema = z.object({
+  type: z.enum(["instant", "lottery"]),
+  endsAt: z
+    .string()
+    .transform((x) => new Date(x))
+    .nullable(),
+  tokenAddress: z.string().nullable(),
+  amount: z.string().refine((x) => toNano(x), {
+    message: "Amount must be a positive decimal number, e.g. 1.0",
+  }),
+  receiverCount: z.number().int().positive(),
+  taskUrl: z.string().url().nullable(),
+});
 
 const RequestBodySchema = z.object({
   giveaway: NewGiveawaySchema.refine(
