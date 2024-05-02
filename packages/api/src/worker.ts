@@ -1,4 +1,5 @@
 import { Worker } from "bullmq";
+import { Lottery } from "./jobs/lottery.js";
 import { Payout } from "./jobs/payout.js";
 import { SyncBlockchain } from "./jobs/syncBlockchain.js";
 import { DefaultQueue } from "./lib/bullmq.js";
@@ -12,6 +13,8 @@ new Worker(
         return await SyncBlockchain.perform(job);
       case Payout.name:
         return await Payout.perform(job);
+      case Lottery.name:
+        return await Lottery.perform(job);
 
       default: {
         throw new Error(`Unknown job name "${job.name}"`);
@@ -37,6 +40,17 @@ await DefaultQueue.add(
 // Repeat `Payout` every 5 minutes.
 await DefaultQueue.add(
   Payout.name,
+  {},
+  {
+    repeat: {
+      pattern: "0 */5 * * * *",
+    },
+  },
+);
+
+// Repeat `Lottery` every 5 minutes.
+await DefaultQueue.add(
+  Lottery.name,
   {},
   {
     repeat: {
