@@ -186,7 +186,7 @@ export class SyncBlockchain extends Job {
 
               if (
                 totalAmount >=
-                giveaway.amount * BigInt(giveaway.receiverCount)
+                BigInt(giveaway.amount) * BigInt(giveaway.receiverCount)
               ) {
                 log(`Giveaway ${giveaway.id} is now active.`);
 

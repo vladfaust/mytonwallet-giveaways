@@ -17,7 +17,7 @@ const model = ref<{
   type: "instant",
   endsAt: null,
   tokenAddress: null,
-  amount: 0,
+  amount: 2.5,
   receiverCount: 1,
   taskUrl: null,
   secret: "",
@@ -147,7 +147,7 @@ async function submit() {
         step="any"
         v-model="model.amount"
         :class="{ 'border-error-500': errors.amount }"
-        placeholder="Token amount (in wei)"
+        placeholder="Token amount (e.g. 1.0)"
       />
       <!-- <div></div>
       <p class="info">ℹ️ How much tokens is given to a winner?</p> -->

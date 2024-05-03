@@ -17,7 +17,7 @@ export const NewGiveawaySchema = z.object({
     .transform((x) => new Date(x))
     .nullable(),
   tokenAddress: z.string().nullable(),
-  amount: z.string().refine((x) => toNano(x), {
+  amount: z.string().refine((x) => Number(x), {
     message: "Amount must be a positive decimal number, e.g. 1.0",
   }),
   receiverCount: z.number().int().positive(),
@@ -54,7 +54,7 @@ export default Router()
 
     const giveaway = await Giveaway.create({
       ...body.data.giveaway,
-      amount: toNano(body.data.giveaway.amount),
+      amount: toNano(body.data.giveaway.amount).toString(),
       taskToken: body.data.giveaway.taskUrl ? nanoid() : undefined,
     });
 
@@ -62,7 +62,7 @@ export default Router()
       zodTypedParse(SuccessResponseSchema, {
         id: giveaway.id,
         giveawayLink: GIVEAWAY_LINK_TEMPLATE.replace(":id", giveaway.id),
-        topUpLink: `ton://transfer/${contract.address.toString({ testOnly, bounceable })}?token=${giveaway.tokenAddress}&amount=${giveaway.amount * BigInt(giveaway.receiverCount)}&comment=${giveaway.id}`,
+        topUpLink: `ton://transfer/${contract.address.toString({ testOnly, bounceable })}?token=${giveaway.tokenAddress}&amount=${BigInt(giveaway.amount) * BigInt(giveaway.receiverCount)}&text=${giveaway.id}`,
         taskToken: giveaway.taskToken,
       }),
     );

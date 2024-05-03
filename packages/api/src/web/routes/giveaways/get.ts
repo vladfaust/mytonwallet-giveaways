@@ -40,7 +40,7 @@ export default Router().get("/giveaways/:giveawayId", async (req, res) => {
       taskUrl: giveaway.taskUrl ?? null,
       participantCount: await countParticipants(giveaway.id),
       giveawayLink: GIVEAWAY_LINK_TEMPLATE.replace(":id", giveaway.id),
-      topUpLink: `ton://transfer/${contract.address.toString({ testOnly, bounceable })}?token=${giveaway.tokenAddress}&amount=${giveaway.amount * BigInt(giveaway.receiverCount)}&comment=${giveaway.id}`,
+      topUpLink: `ton://transfer/${contract.address.toString({ testOnly, bounceable })}?token=${giveaway.tokenAddress}&amount=${BigInt(giveaway.amount) * BigInt(giveaway.receiverCount)}&text=${giveaway.id}`,
     }),
   );
 });

@@ -83,7 +83,7 @@ export class Payout extends Job {
 
         // (seqno 42) Sending 30.0 TON to 2 addresses: 10.0 TON -> 0:abc (giveaway 69), 20.0 TON -> 0:def (giveaway 420)...
         log(
-          `(seqno ${seqno}) Sending ${fromNano(participants.reduce((sum, p) => sum + findParticipantGiveaway(p).amount, BigInt(0)))} TON to ${participants.length} addresses: ${participants.map((p) => `${fromNano(findParticipantGiveaway(p).amount)} TON -> ${new Address(TON_WORKCHAIN, p.receiverAddress)} (giveaway ${p.giveawayId})`).join(", ")}...`,
+          `(seqno ${seqno}) Sending ${fromNano(participants.reduce((sum, p) => sum + BigInt(findParticipantGiveaway(p).amount), BigInt(0)))} TON to ${participants.length} addresses: ${participants.map((p) => `${fromNano(findParticipantGiveaway(p).amount)} TON -> ${new Address(TON_WORKCHAIN, p.receiverAddress)} (giveaway ${p.giveawayId})`).join(", ")}...`,
         );
 
         // TODO: Check transaction status, presumably by

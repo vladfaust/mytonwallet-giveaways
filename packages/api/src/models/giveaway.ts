@@ -17,7 +17,10 @@ export class Giveaway extends Model<
   declare status: CreationOptional<"pending" | "active" | "finished">;
   declare endsAt: Date | null;
   declare tokenAddress: string | null;
-  declare amount: bigint;
+
+  /** Sequelize serializes BIGINT to strings. */
+  declare amount: string;
+
   declare receiverCount: number;
   declare taskUrl: string | null;
   declare taskToken: string | null;

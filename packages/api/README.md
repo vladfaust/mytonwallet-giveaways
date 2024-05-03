@@ -17,6 +17,7 @@ The following are the contest requirements:
 
 It is my first time using [Sequelize](https://sequelize.org), and I've found it to be a bit cumbersome.
 Sequelize has poor typing support and forces opinionated ORM patterns.
+Codebase-database mismatch due to weak typing is common, leading to runtime errors.
 
 [Drizzle](https://orm.drizzle.team) has better TypeScript ergonomics and is more SQL-like overall; this is what I use for my projects.
 
