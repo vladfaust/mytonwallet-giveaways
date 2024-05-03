@@ -21,20 +21,22 @@ const RequestBodySchema = z.object({
   captchaToken: z.string(),
 });
 
+// REFACTOR: Extract from the `Participant` model.
+export const ParticipantSchema = z.object({
+  status: z.enum([
+    "awaitingTask",
+    "awaitingLottery",
+    "awaitingPayment",
+    "paid",
+    "lost",
+  ]),
+});
+
 const SuccessResponseSchema = SuccessResponseSchemaBase.extend({
   giveaway: GiveawaySchema,
 
   // NOTE: Out-of-spec, yet useful for the client.
-  // REFACTOR: Extract from the `Participant` model.
-  participant: z.object({
-    status: z.enum([
-      "awaitingTask",
-      "awaitingLottery",
-      "awaitingPayment",
-      "paid",
-      "lost",
-    ]),
-  }),
+  participant: ParticipantSchema,
 });
 
 export default Router()
