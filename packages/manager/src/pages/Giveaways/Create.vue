@@ -89,121 +89,90 @@ async function submit() {
 }
 </script>
 
-<template>
-  <div class="flex flex-col items-center gap-y-2">
-    <h1>Create giveaway</h1>
-    <form
-      @submit.prevent="submit"
-      class="grid gap-y-2 gap-x-2 p-3 bg-gray-800 rounded-lg"
-      style="grid-template-columns: repeat(2, auto)"
-    >
-      <!-- Type. -->
-      <div class="label-wrapper">
-        <label for="type">Type</label>
-      </div>
-      <select id="type" v-model="model.type">
-        <option value="instant">Instant</option>
-        <option value="lottery">Lottery</option>
-      </select>
+<template lang="pug">
+.flex.flex-col.items-center.gap-y-2
+  h1 Create giveaway
+  form.grid.gap-y-2.gap-x-2.p-3.bg-gray-800.rounded-lg(
+    @submit.prevent="submit"
+    style="grid-template-columns: repeat(2, auto)"
+  )
+    //-Type.
+    .label-wrapper
+      label(for="type") Type
+    select#type(v-model="model.type")
+      option(value="instant") Instant
+      option(value="lottery") Lottery
 
-      <!-- Ends at. -->
-      <div class="label-wrapper">
-        <label for="endsAt">Ends at</label>
-      </div>
-      <input
-        id="endsAt"
-        type="datetime-local"
-        v-model="model.endsAt"
-        :class="{ 'border-error-500': errors.endsAt }"
-      />
-      <!-- <div></div>
-      <p class="info">ℹ️ When does the giveaway end?</p> -->
-      <template v-if="errors.endsAt">
-        <div></div>
-        <p class="error">❌ {{ errors.endsAt }}</p>
-      </template>
+    //-Ends at.
+    .label-wrapper
+      label(for="endsAt") Ends at
+    input#endsAt(
+      type="datetime-local"
+      v-model="model.endsAt"
+      :class="{ 'border-error-500': errors.endsAt }"
+    )
+    template(v-if="errors.endsAt")
+      div
+      p.error ❌ {{ errors.endsAt }}
 
-      <!-- Token address. -->
-      <div class="label-wrapper">
-        <label for="tokenAddress">Token address</label>
-      </div>
-      <!-- TODO: Enable custom addresses. -->
-      <input
-        id="tokenAddress"
-        type="text"
-        v-model="model.tokenAddress"
-        placeholder="Leave empty for Toncoin"
-        disabled
-      />
+    //-Token address.
+    .label-wrapper
+      label(for="tokenAddress") Token address
+    input#tokenAddress(
+      type="text"
+      v-model="model.tokenAddress"
+      placeholder="Leave empty for Toncoin"
+      disabled
+    )
 
-      <!-- Amount. -->
-      <div class="label-wrapper">
-        <label for="amount">Token amount</label>
-      </div>
-      <input
-        id="amount"
-        type="number"
-        min="0"
-        step="any"
-        v-model="model.amount"
-        :class="{ 'border-error-500': errors.amount }"
-        placeholder="Token amount (e.g. 1.0)"
-      />
-      <!-- <div></div>
-      <p class="info">ℹ️ How much tokens is given to a winner?</p> -->
-      <template v-if="errors.amount">
-        <div></div>
-        <p class="error">❌ {{ errors.amount }}</p>
-      </template>
+    //-Amount.
+    .label-wrapper
+      label(for="amount") Token amount
+    input#amount(
+      type="number"
+      min="0"
+      step="any"
+      v-model="model.amount"
+      :class="{ 'border-error-500': errors.amount }"
+      placeholder="Token amount (e.g. 1.0)"
+    )
+    template(v-if="errors.amount")
+      div
+      p.error ❌ {{ errors.amount }}
 
-      <!-- Receiver count. -->
-      <div class="label-wrapper">
-        <label for="receiverCount">Receiver count</label>
-      </div>
-      <input
-        id="receiverCount"
-        type="number"
-        min="1"
-        v-model="model.receiverCount"
-        placeholder="Receiver count"
-      />
-      <!-- <div></div>
-      <p class="info">ℹ️ What is the maximum number of winners?</p> -->
+    //-Receiver count.
+    .label-wrapper
+      label(for="receiverCount") Receiver count
+    input#receiverCount(
+      type="number"
+      min="1"
+      v-model="model.receiverCount"
+      placeholder="Receiver count"
+    )
 
-      <!-- Task URL. -->
-      <div class="label-wrapper">
-        <label for="taskUrl">Task URL</label>
-      </div>
-      <input
-        id="taskUrl"
-        type="url"
-        v-model="model.taskUrl"
-        placeholder="http://example.com/task"
-      />
-      <!-- <div></div>
-      <p class="info">ℹ️ Is there a task to complete?</p> -->
+    //-Task URL.
+    .label-wrapper
+      label(for="taskUrl") Task URL
+    input#taskUrl(
+      type="url"
+      v-model="model.taskUrl"
+      placeholder="http://example.com/task"
+    )
 
-      <!-- Secret. -->
-      <div class="label-wrapper">
-        <label for="secret">Secret</label>
-      </div>
-      <input
-        id="secret"
-        type="password"
-        autocomplete="off"
-        v-model="model.secret"
-        :class="{ 'border-error-500': errors.secret }"
-      />
-      <template v-if="errors.secret">
-        <div></div>
-        <p class="error">❌ {{ errors.secret }}</p>
-      </template>
+    //-Secret.
+    .label-wrapper
+      label(for="secret") Secret
+    input#secret(
+      type="password"
+      autocomplete="off"
+      v-model="model.secret"
+      :class="{ 'border-error-500': errors.secret }"
+    )
+    template(v-if="errors.secret")
+      div
+      p.error ❌ {{ errors.secret }}
 
-      <button class="col-span-full btn-primary" :disabled="!isValid">
-        Create
-      </button>
-    </form>
-  </div>
+    button.btn-primary.col-span-full(:disabled="!isValid") Create
 </template>
 
 <style lang="scss" scoped>
@@ -215,10 +184,6 @@ form {
 
   .label-wrapper {
     @apply flex items-center justify-end font-semibold;
-  }
-
-  p.info {
-    @apply -my-1 text-sm;
   }
 
   p.error {
