@@ -92,6 +92,17 @@ export function parseMessageBodyString(body: Cell): string | Buffer {
   }
 }
 
+/**
+ * Construct a new `Address` from an `Address.toRaw()` buffer.
+ */
+export function addressFromRawBuffer(buffer: Buffer): Address {
+  // `Address.toRaw()` appends workchain to the address hash.
+  const hash = buffer.subarray(0, 32);
+  const workchain = buffer.readUint32BE(32);
+
+  return new Address(workchain, hash);
+}
+
 wrapTonClientRequest(() =>
   contract.getBalance().then((balance) => {
     console.log(

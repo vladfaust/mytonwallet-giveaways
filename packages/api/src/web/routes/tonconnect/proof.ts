@@ -5,7 +5,7 @@ import * as jose from "jose";
 import { Address } from "ton";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
-import { JWT_SECRET } from "../../../env.js";
+import { JWT_SECRET, TON_WORKCHAIN } from "../../../env.js";
 import { redis } from "../../../lib/redis.js";
 import { verifySignature } from "../../../lib/tonconnect.js";
 import { redisProofKey } from "./_common.js";
@@ -47,6 +47,10 @@ export default Router()
     }
 
     const address = Address.parse(body.data.address);
+    if (address.workChain !== TON_WORKCHAIN) {
+      return res.status(400).json({ error: "Invalid workchain" });
+    }
+
     const publicKey = Buffer.from(body.data.publicKey, "hex");
     const signature = Buffer.from(body.data.tonProof.signature, "base64");
 

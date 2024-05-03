@@ -131,7 +131,10 @@ export default Router()
       participant = await Participant.create(
         {
           giveawayId: giveaway.id,
+
+          // NOTE: Raw address includes the workchain ID.
           receiverAddress: Address.parse(addressString).toRaw(),
+
           status: participantStatus,
         },
         { transaction },

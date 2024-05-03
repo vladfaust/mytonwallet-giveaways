@@ -1,8 +1,13 @@
 import { Job } from "bullmq";
-import { Address, SendMode, fromNano, internal } from "ton";
-import { GIVEAWAY_LINK_TEMPLATE, TON_WORKCHAIN } from "../env.js";
+import { SendMode, fromNano, internal } from "ton";
+import { GIVEAWAY_LINK_TEMPLATE } from "../env.js";
 import { sequelize } from "../lib/sequelize.js";
-import { contract, keyPair, wrapTonClientRequest } from "../lib/ton.js";
+import {
+  addressFromRawBuffer,
+  contract,
+  keyPair,
+  wrapTonClientRequest,
+} from "../lib/ton.js";
 import { Giveaway } from "../models/giveaway.js";
 import { Participant } from "../models/participant.js";
 
@@ -46,6 +51,8 @@ export class Payout extends Job {
           return;
         }
 
+        log(`Found ${participants.length} participants awaiting payment.`);
+
         // NOTE: Can not lock for update with joins,
         // so giveaways shall be fetched separately.
         //
@@ -54,6 +61,7 @@ export class Payout extends Job {
           attributes: ["id", "amount", "tokenAddress"],
           transaction,
         });
+
         function findParticipantGiveaway(participant: Participant): Giveaway {
           return giveaways.find(
             (giveaway) => giveaway.id === participant.giveawayId,
@@ -74,8 +82,8 @@ export class Payout extends Job {
           sendMode: SendMode.PAY_GAS_SEPARATELY,
           messages: participants.map((participant) =>
             internal({
-              to: new Address(TON_WORKCHAIN, participant.receiverAddress),
-              value: findParticipantGiveaway(participant).amount,
+              to: addressFromRawBuffer(participant.receiverAddress),
+              value: BigInt(findParticipantGiveaway(participant).amount),
               body: GIVEAWAY_LINK_TEMPLATE.replace(
                 ":id",
                 participant.giveawayId,
@@ -86,7 +94,14 @@ export class Payout extends Job {
 
         // (seqno 42) Sending 30.0 TON to 2 addresses: 10.0 TON -> 0:abc (giveaway 69), 20.0 TON -> 0:def (giveaway 420)...
         log(
-          `(seqno ${seqno}) Sending ${fromNano(participants.reduce((sum, p) => sum + BigInt(findParticipantGiveaway(p).amount), BigInt(0)))} TON to ${participants.length} addresses: ${participants.map((p) => `${fromNano(findParticipantGiveaway(p).amount)} TON -> ${new Address(TON_WORKCHAIN, p.receiverAddress)} (giveaway ${p.giveawayId})`).join(", ")}...`,
+          `(seqno ${seqno}) Sending ${fromNano(participants.reduce((sum, p) => sum + BigInt(findParticipantGiveaway(p).amount), BigInt(0)))} TON to ${participants.length} addresses: ${participants
+            .map(
+              (p) =>
+                `${fromNano(findParticipantGiveaway(p).amount)} TON -> ${addressFromRawBuffer(
+                  p.receiverAddress,
+                ).toRawString()} (giveaway ${p.giveawayId})`,
+            )
+            .join(", ")}...`,
         );
 
         // TODO: Check transaction status, presumably by
@@ -109,6 +124,8 @@ export class Payout extends Job {
         );
 
         log(`Updated ${participants.length} participants' statuses to "paid".`);
+
+        // TODO: Update giveaway status to "finished" if all participants are paid.
       });
     } while (participants.length > 0);
 
