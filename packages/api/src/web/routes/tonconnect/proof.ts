@@ -43,7 +43,7 @@ export default Router()
     );
 
     if (!redisProof) {
-      return res.status(400).json({ error: "Invalid payload" });
+      return res.status(400).json({ error: "Invalid proof payload" });
     }
 
     const address = Address.parse(body.data.address);
