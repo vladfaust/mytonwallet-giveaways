@@ -5,6 +5,7 @@ export const sequelize = new Sequelize(DATABASE_URL);
 
 sequelize.authenticate().then(async () => {
   console.log("Sequelize connection OK");
-  await sequelize.sync({ force: true, match: /_test$/ });
+  // TODO: Replace sync with migrations.
+  await sequelize.sync({ force: false, match: /_test$/ });
   console.log("Sequelize sync OK");
 });
