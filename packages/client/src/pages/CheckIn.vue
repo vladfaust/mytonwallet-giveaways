@@ -1,15 +1,44 @@
 <script setup lang="ts">
-import { connector, wallet } from "../lib/ton";
-import { WalletConnectionSource, toUserFriendlyAddress } from "@tonconnect/sdk";
+import {
+  connector,
+  wallet,
+  prettifyAddress,
+  restoringConnection,
+} from "../lib/ton";
+import { type WalletConnectionSource } from "@tonconnect/sdk";
 import { jwt } from "../store";
-import { onUnmounted } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
+import { CheckIcon } from "lucide-vue-next";
+import { watchImmediate } from "@vueuse/core";
 
 const JSBRIDGE_KEY = "mytonwallet";
 
 const { giveawayId } = defineProps<{ giveawayId: string }>();
 
+const giveaway = ref<
+  | {
+      taskUrl: string | null;
+    }
+  | undefined
+>();
 let unsubscribe: (() => void) | undefined;
-async function connect() {
+const participantStatus = ref<
+  | "awaitingTask"
+  | "awaitingLottery" // NOTE: Out-of-spec.
+  | "awaitingPayment"
+  | "paid"
+  | "lost"
+  | null
+  | undefined
+>();
+
+async function fetchGiveaway() {
+  return await fetch(
+    import.meta.env.VITE_BACKEND_URL + "/giveaways/" + giveawayId,
+  ).then((res) => res.json());
+}
+
+async function connectWallet() {
   const proofPayload = await fetch(
     import.meta.env.VITE_BACKEND_URL + "/tonconnect/auth-payload",
   ).then((res) => res.text());
@@ -64,6 +93,27 @@ async function connect() {
   });
 }
 
+async function checkJoined(jwt: string) {
+  participantStatus.value = await fetch(
+    import.meta.env.VITE_BACKEND_URL + "/giveaways/" + giveawayId + "/checkin",
+    {
+      headers: {
+        Authorization: "Bearer " + jwt,
+      },
+    },
+  )
+    .then((res) => {
+      return res.json();
+    })
+    .then((res) => {
+      if (res.ok) {
+        return res.participant.status;
+      } else {
+        return null;
+      }
+    });
+}
+
 async function join() {
   await fetch(
     import.meta.env.VITE_BACKEND_URL + "/giveaways/" + giveawayId + "/checkin",
@@ -79,26 +129,85 @@ async function join() {
     },
   ).then(async (res) => {
     if (!res.ok) {
-      throw new Error("Failed to check in");
+      const json = await res.json();
+      alert(json.error);
+      throw new Error(`Failed to check in: ${json.error}`);
     }
+
+    participantStatus.value = (await res.json()).participant.status;
   });
 }
+
+watchImmediate(
+  () => jwt.value,
+  (jwt) => {
+    if (!jwt) {
+      participantStatus.value = null;
+    } else {
+      checkJoined(jwt);
+    }
+  },
+);
+
+onMounted(async () => {
+  giveaway.value = await fetchGiveaway();
+});
 
 onUnmounted(() => {
   unsubscribe?.();
 });
 </script>
 
-<template>
-  <div>
-    <h1>Check In</h1>
-    <p>Giveaway ID: {{ giveawayId }}</p>
-    <template v-if="wallet">
-      <p>Wallet address: {{ toUserFriendlyAddress(wallet.account.address) }}</p>
-      <button @click="join" v-if="wallet">Join Giveaway</button>
-    </template>
-    <template v-else>
-      <button @click="connect" v-if="!wallet">Connect</button>
-    </template>
-  </div>
+<template lang="pug">
+.grid.place-items-center.h-screen
+  .flex.flex-col.items-center.p-4.gap-2
+    .flex.flex-col.items-center
+      h1.text-xl.tracking-wide.font-semibold.uppercase Giveaway
+      span
+        b ID:&nbsp;
+        span.font-mono {{ giveawayId }}
+      code(v-if="participantStatus") {{ participantStatus }}
+
+    template(v-if="restoringConnection")
+      span.dz-loading.dz-loading-spinner.dz-loading-lg
+
+    template(v-else)
+      .flex.flex-col.items-center.gap-1
+        span(:class="{ 'line-through': wallet }")
+          b Step 1:
+          |
+          | Connect MyTonWallet
+          CheckIcon.inline-block.text-success.ml-1(v-if="wallet" :size="20")
+        button.dz-btn.dz-btn-primary(@click="connectWallet" :disabled="wallet")
+          span(v-if="wallet") Already connected
+          span(v-else) Connect
+
+      .flex.flex-col.items-center.gap-1(v-if="participantStatus || wallet")
+        span(:class="{ 'line-through': participantStatus }")
+          b Step 2:
+          |
+          | Join the giveaway
+          CheckIcon.inline-block.text-success.ml-1(
+            v-if="participantStatus"
+            :size="20"
+          )
+        button.dz-btn.dz-btn-primary(
+          @click="join"
+          :disabled="participantStatus"
+        )
+          span(v-if="participantStatus") Already joined
+          span(v-else) Join
+
+      .flex.flex-col.items-center.gap-1(v-if="participantStatus")
+        template(v-if="participantStatus === 'awaitingTask'")
+          p Complete the task: {{ giveaway?.taskUrl }}
+
+.flex.gap-2.p-2.items-center.absolute.bottom-0.w-full.bg-base-200.justify-center(
+  v-if="wallet"
+)
+  span
+    | Connected as
+    |
+    code.text-primary {{ prettifyAddress(wallet.account.address) }}
+  button.dz-btn.dz-btn-sm.dz-btn-neutral(@click="connector.disconnect") Disconnect
 </template>

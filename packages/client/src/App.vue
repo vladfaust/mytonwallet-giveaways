@@ -3,8 +3,7 @@ import { useRoute } from "vue-router";
 const route = useRoute();
 </script>
 
-<template>
-  <RouterView v-slot="{ Component }">
-    <component :is="Component" :key="route.path" />
-  </RouterView>
+<template lang="pug">
+RouterView(v-slot="{ Component }")
+  component(:is="Component" :key="route.path")
 </template>
