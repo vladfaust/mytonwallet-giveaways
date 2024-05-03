@@ -2,6 +2,7 @@
   "recommendations": [
     "bradlc.vscode-tailwindcss",
     "vue.volar",
-    "csstools.postcss"
+    "csstools.postcss",
+    "ducfilan.pug-formatter"
   ]
 }
