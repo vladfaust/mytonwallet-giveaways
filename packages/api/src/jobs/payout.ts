@@ -63,7 +63,10 @@ export class Payout extends Job {
         // 1. Make blockchain transfers.
         //
 
-        const seqno = await contract.getSeqno();
+        const seqno = await wrapTonClientRequest(
+          () => contract.getSeqno(),
+          log,
+        );
 
         const transfer = contract.createTransfer({
           seqno,
