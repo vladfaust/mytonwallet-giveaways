@@ -1,7 +1,10 @@
 {
   "name": "@mytonwallet-giveaways-vladfaust/manager",
   "private": true,
+  "author": "Vladislav Kosarev <vladfaust.com>",
   "version": "0.0.0",
+  "description": "Manager web client for MyTonWallet Giveaways contest application",
+  "license": "UNLICENSED",
   "type": "module",
   "scripts": {
     "dev": "vite",
