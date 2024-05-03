@@ -1,6 +1,6 @@
 import { mnemonicToWalletKey } from "@ton/crypto";
 import { AxiosError } from "axios";
-import pRetry from "p-retry";
+import pRetry, { Options } from "p-retry";
 import { Address, Cell, TonClient, WalletContractV4, fromNano } from "ton";
 import {
   TON_CLIENT_ENDPOINT,
@@ -39,8 +39,10 @@ export function prettifyAddress(
 export async function wrapTonClientRequest<T>(
   callable: () => Promise<T>,
   log = console.log,
+  pRetryOptions?: Options,
 ) {
   return pRetry(callable, {
+    ...pRetryOptions,
     onFailedAttempt: (error) => {
       // NOTE: {@link AxiosError} (`ton` client uses `axios` under the hood)
       // is an interface, so we can't use `instanceof`.
