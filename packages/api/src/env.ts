@@ -28,6 +28,7 @@ export const {
   TON_MAINNET,
   TON_WORKCHAIN,
   TON_CLIENT_ENDPOINT,
+  TON_CLIENT_API_KEY,
   TON_MAIN_ADDRESS_MNEMONICS,
 
   GIVEAWAY_LINK_TEMPLATE,
@@ -58,6 +59,7 @@ export const {
       .pipe(z.number().int().nonnegative())
       .default("0"),
     TON_CLIENT_ENDPOINT: z.string().url(),
+    TON_CLIENT_API_KEY: z.string().optional(),
     TON_MAIN_ADDRESS_MNEMONICS: z.string().transform((x) => x.split(/\s+/)),
 
     GIVEAWAY_LINK_TEMPLATE: z.string(),

@@ -3,13 +3,18 @@ import { AxiosError } from "axios";
 import pRetry, { Options } from "p-retry";
 import { Address, Cell, TonClient, WalletContractV4, fromNano } from "ton";
 import {
+  TON_CLIENT_API_KEY,
   TON_CLIENT_ENDPOINT,
   TON_MAINNET,
   TON_MAIN_ADDRESS_MNEMONICS,
   TON_WORKCHAIN,
 } from "../env.js";
 
-export const client = new TonClient({ endpoint: TON_CLIENT_ENDPOINT });
+export const client = new TonClient({
+  endpoint: TON_CLIENT_ENDPOINT,
+  apiKey: TON_CLIENT_API_KEY,
+});
+
 export const keyPair = await mnemonicToWalletKey(TON_MAIN_ADDRESS_MNEMONICS);
 
 const walletContract = WalletContractV4.create({
