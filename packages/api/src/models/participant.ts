@@ -32,7 +32,7 @@ Participant.init(
   {
     id: {
       type: DataTypes.INTEGER,
-      autoIncrementIdentity: true,
+      autoIncrement: true,
       primaryKey: true,
     },
     giveawayId: {
