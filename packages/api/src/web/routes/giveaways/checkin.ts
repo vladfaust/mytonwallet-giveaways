@@ -159,7 +159,7 @@ export default Router()
           id: result.giveaway.id,
           type: result.giveaway.type,
           status: result.giveaway.status,
-          endsAt: result.giveaway.endsAt ?? null,
+          endsAt: result.giveaway.endsAt?.toString() ?? null,
           tokenAddress: result.giveaway.tokenAddress ?? null,
           amount: fromNano(result.giveaway.amount),
           receiverCount: result.giveaway.receiverCount,

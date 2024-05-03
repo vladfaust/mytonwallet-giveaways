@@ -33,7 +33,7 @@ export default Router().get("/giveaways/:giveawayId", async (req, res) => {
       id: giveaway.id,
       type: giveaway.type,
       status: giveaway.status,
-      endsAt: giveaway.endsAt ?? null,
+      endsAt: giveaway.endsAt?.toString() ?? null,
       tokenAddress: giveaway.tokenAddress ?? null,
       amount: fromNano(giveaway.amount),
       receiverCount: giveaway.receiverCount,

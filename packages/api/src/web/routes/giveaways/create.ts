@@ -12,10 +12,14 @@ import { sendError } from "./_common.js";
 
 export const NewGiveawaySchema = z.object({
   type: z.enum(["instant", "lottery"]),
+
+  // NOTE: I'd like to make it `z.date()`, but Zod doesn't
+  // differentiate between input & output schema types.
   endsAt: z
     .string()
-    .transform((x) => new Date(x))
+    .refine((x) => new Date(x), { message: "Invalid date" })
     .nullable(),
+
   tokenAddress: z.string().nullable(),
   amount: z.string().refine((x) => Number(x), {
     message: "Amount must be a positive decimal number, e.g. 1.0",
@@ -54,6 +58,9 @@ export default Router()
 
     const giveaway = await Giveaway.create({
       ...body.data.giveaway,
+      endsAt: body.data.giveaway.endsAt
+        ? new Date(body.data.giveaway.endsAt)
+        : undefined,
       amount: toNano(body.data.giveaway.amount).toString(),
       taskToken: body.data.giveaway.taskUrl ? nanoid() : undefined,
     });
