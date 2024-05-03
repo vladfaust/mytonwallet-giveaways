@@ -68,7 +68,11 @@ export default Router()
       );
 
       if (participantCount === giveaway.receiverCount) {
-        return "Giveaway is full";
+        // NOTE: Technically, it's not a error, because the callback caller
+        // is not responsible in this case. It's just the participant
+        // being too slow on the task. But we're returning a error
+        // here so that the caller doesn't send any more updates.
+        return "The giveaway is full. No more participants are allowed.";
       }
 
       await participant.update(
