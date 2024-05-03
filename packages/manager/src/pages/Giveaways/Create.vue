@@ -2,6 +2,7 @@
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { routeLocation } from "../../router";
+import { OctagonAlertIcon } from "lucide-vue-next";
 
 const router = useRouter();
 
@@ -90,35 +91,37 @@ async function submit() {
 </script>
 
 <template lang="pug">
-.flex.flex-col.items-center.gap-y-2
-  h1 Create giveaway
-  form.grid.gap-y-2.gap-x-2.p-3.bg-gray-800.rounded-lg(
+.flex.flex-col.items-center.gap-y-2.p-3
+  h1.text-2xl.font-semibold.tracking-wide.uppercase Create giveaway
+  form.grid.gap-y-3.gap-x-3.p-4.bg-base-200.rounded-xl.max-w-md(
     @submit.prevent="submit"
     style="grid-template-columns: repeat(2, auto)"
   )
     //-Type.
     .label-wrapper
       label(for="type") Type
-    select#type(v-model="model.type")
+    select#type.dz-select.dz-select-bordered(v-model="model.type")
       option(value="instant") Instant
       option(value="lottery") Lottery
 
     //-Ends at.
     .label-wrapper
       label(for="endsAt") Ends at
-    input#endsAt(
+    input#endsAt.dz-input.dz-input-bordered(
       type="datetime-local"
       v-model="model.endsAt"
-      :class="{ 'border-error-500': errors.endsAt }"
+      :class="{ 'dz-input-error': errors.endsAt }"
     )
     template(v-if="errors.endsAt")
       div
-      p.error ❌ {{ errors.endsAt }}
+      p.dz-alert.dz-alert-error
+        OctagonAlertIcon(:size="24")
+        p.font-medium {{ errors.endsAt }}
 
     //-Token address.
     .label-wrapper
       label(for="tokenAddress") Token address
-    input#tokenAddress(
+    input#tokenAddress.dz-input.dz-input-bordered(
       type="text"
       v-model="model.tokenAddress"
       placeholder="Leave empty for Toncoin"
@@ -128,22 +131,24 @@ async function submit() {
     //-Amount.
     .label-wrapper
       label(for="amount") Token amount
-    input#amount(
+    input#amount.dz-input.dz-input-bordered(
       type="number"
       min="0"
       step="any"
       v-model="model.amount"
-      :class="{ 'border-error-500': errors.amount }"
+      :class="{ 'dz-input-error': errors.amount }"
       placeholder="Token amount (e.g. 1.0)"
     )
     template(v-if="errors.amount")
       div
-      p.error ❌ {{ errors.amount }}
+      p.dz-alert.dz-alert-error
+        OctagonAlertIcon(:size="24")
+        p.font-medium {{ errors.amount }}
 
     //-Receiver count.
     .label-wrapper
       label(for="receiverCount") Receiver count
-    input#receiverCount(
+    input#receiverCount.dz-input.dz-input-bordered(
       type="number"
       min="1"
       v-model="model.receiverCount"
@@ -153,7 +158,7 @@ async function submit() {
     //-Task URL.
     .label-wrapper
       label(for="taskUrl") Task URL
-    input#taskUrl(
+    input#taskUrl.dz-input.dz-input-bordered(
       type="url"
       v-model="model.taskUrl"
       placeholder="http://example.com/task"
@@ -162,32 +167,25 @@ async function submit() {
     //-Secret.
     .label-wrapper
       label(for="secret") Secret
-    input#secret(
+    input#secret.dz-input.dz-input-bordered(
       type="password"
       autocomplete="off"
       v-model="model.secret"
-      :class="{ 'border-error-500': errors.secret }"
+      :class="{ 'dz-input-error': errors.secret }"
     )
     template(v-if="errors.secret")
       div
-      p.error ❌ {{ errors.secret }}
+      p.dz-alert.dz-alert-error
+        OctagonAlertIcon(:size="24")
+        p.font-medium {{ errors.secret }}
 
-    button.btn-primary.col-span-full(:disabled="!isValid") Create
+    button.dz-btn-lg.dz-btn.dz-btn-primary.col-span-full(:disabled="!isValid") Create
 </template>
 
 <style lang="scss" scoped>
 form {
-  input,
-  select {
-    @apply border w-full rounded px-2 py-1;
-  }
-
   .label-wrapper {
-    @apply flex items-center justify-end font-semibold;
-  }
-
-  p.error {
-    @apply -my-1 text-error-500 text-sm;
+    @apply flex items-center text-right justify-end font-semibold leading-tight;
   }
 }
 </style>

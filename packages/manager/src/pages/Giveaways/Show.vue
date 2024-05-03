@@ -29,13 +29,13 @@ onMounted(async () => {
 </script>
 
 <template lang="pug">
-.flex.flex-col.items-center.gap-y-2
-  h1 Giveaway
-  .grid.gap-y-2.gap-x-2.p-3.bg-gray-800.overflow-hidden.rounded-lg.w-full.max-w-md(
+.flex.flex-col.items-center.gap-y-2.p-3
+  h1.text-2xl.font-semibold.tracking-wide.uppercase Giveaway
+  .grid.gap-y-3.gap-x-3.p-4.bg-base-200.rounded-xl.max-w-md.w-full(
     v-if="giveaway"
     style="grid-template-columns: repeat(2, auto)"
   )
-    span.attribute ID
+    span.attribute.font-mono ID
     span {{ giveaway.id }}
 
     span.attribute Type
@@ -66,10 +66,10 @@ onMounted(async () => {
     span {{ giveaway.participantCount }}
 
     span.attribute Giveaway link
-    a.overflow-x-scroll.text-nowrap(:href="giveaway.giveawayLink") {{ giveaway.giveawayLink }}
+    a.break-all.font-mono.dz-link-hover.w-full(:href="giveaway.giveawayLink") {{ giveaway.giveawayLink }}
 
     span.attribute Top-up link
-    a.overflow-x-scroll.text-nowrap(:href="giveaway.topUpLink") {{ giveaway.topUpLink }}
+    a.break-all.font-mono.dz-link-hover.w-full(:href="giveaway.topUpLink") {{ giveaway.topUpLink }}
 </template>
 
 <style lang="scss" scoped>

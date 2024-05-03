@@ -20,6 +20,8 @@
     "@vitejs/plugin-vue": "^5.0.4",
     "@vue/language-plugin-pug": "^2.0.16",
     "autoprefixer": "^10.4.19",
+    "daisyui": "^4.10.5",
+    "lucide-vue-next": "^0.377.0",
     "postcss": "^8.4.38",
     "pug": "^3.0.2",
     "sass": "^1.75.0",
