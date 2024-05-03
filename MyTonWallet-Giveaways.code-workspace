@@ -1,0 +1,18 @@
+{
+  "folders": [
+    {
+      "path": "packages/api",
+    },
+    {
+      "path": "packages/client",
+    },
+    {
+      "path": "packages/manager",
+    },
+    {
+      "name": "root",
+      "path": ".",
+    },
+  ],
+  "settings": {},
+}
