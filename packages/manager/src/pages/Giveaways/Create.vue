@@ -127,11 +127,13 @@ async function submit() {
       <div class="label-wrapper">
         <label for="tokenAddress">Token address</label>
       </div>
+      <!-- TODO: Enable custom addresses. -->
       <input
         id="tokenAddress"
         type="text"
         v-model="model.tokenAddress"
         placeholder="Leave empty for Toncoin"
+        disabled
       />
 
       <!-- Amount. -->
