@@ -48,7 +48,13 @@ Participant.init(
       allowNull: false,
     },
     status: {
-      type: DataTypes.ENUM("awaitingTask", "awaitingPayment", "paid", "lost"),
+      type: DataTypes.ENUM(
+        "awaitingTask",
+        "awaitingLottery",
+        "awaitingPayment",
+        "paid",
+        "lost",
+      ),
       allowNull: false,
     },
     createdAt: {
