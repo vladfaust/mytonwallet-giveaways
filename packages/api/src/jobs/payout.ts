@@ -10,6 +10,7 @@ import {
 } from "../lib/ton.js";
 import { Giveaway } from "../models/giveaway.js";
 import { Participant } from "../models/participant.js";
+import { countParticipants } from "../web/routes/giveaways/_common.js";
 
 /**
  * From the specification (_wording_):
@@ -58,7 +59,7 @@ export class Payout extends Job {
         //
         const giveaways = await Giveaway.findAll({
           where: { id: participants.map((p) => p.giveawayId) },
-          attributes: ["id", "amount", "tokenAddress"],
+          attributes: ["id", "amount", "tokenAddress", "receiverCount"],
           transaction,
         });
 
@@ -125,7 +126,35 @@ export class Payout extends Job {
 
         log(`Updated ${participants.length} participants' statuses to "paid".`);
 
-        // TODO: Update giveaway status to "finished" if all participants are paid.
+        // Update giveaway statuses to "finished" if all participants are paid.
+        //
+        // NOTE(perf.): Could've updated giveways one-by-one
+        // in loop, but instead chose to do it in bulk.
+        //
+        // OPTIMIZE: It is possible to build a single query
+        // to find and update all matching giveaways at once.
+        const giveawayIdsToFinish = new Set<string>();
+        for (const giveaway of giveaways) {
+          const participantsCount = await countParticipants(giveaway.id);
+
+          if (participantsCount >= giveaway.receiverCount) {
+            giveawayIdsToFinish.add(giveaway.id);
+          }
+        }
+
+        if (giveawayIdsToFinish.size) {
+          await Giveaway.update(
+            { status: "finished" },
+            {
+              where: { id: [...giveawayIdsToFinish] },
+              transaction,
+            },
+          );
+
+          log(
+            `Updated giveaway statuses to "finished": ${[...giveawayIdsToFinish].join(", ")}.`,
+          );
+        }
       });
     } while (participants.length > 0);
 
