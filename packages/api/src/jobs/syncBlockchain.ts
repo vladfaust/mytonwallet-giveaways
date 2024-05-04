@@ -1,6 +1,7 @@
 import { Job } from "bullmq";
 import { Transaction as SequelizeTransaction } from "sequelize";
 import { fromNano, Transaction as TonTransaction } from "ton";
+import { TON_HISTORY_CUTOFF } from "../env.js";
 import { sequelize } from "../lib/sequelize.js";
 import {
   client,
@@ -73,6 +74,18 @@ export class SyncBlockchain extends Job {
       }
 
       for (const currentTonTransaction of currentTonTransactions) {
+        // Check if the transaction is too old.
+        if (
+          TON_HISTORY_CUTOFF &&
+          new Date(currentTonTransaction.now * 1000) < TON_HISTORY_CUTOFF
+        ) {
+          log(
+            `Reached a TON transaction ${currentTonTransaction.hash().toString("hex")} older than the cutoff time, stop fetching.`,
+          );
+
+          break fetchTransactionsLoop;
+        }
+
         // Check if the transaction is already processed.
         if (currentTonTransaction.hash().equals(meta.latestTransaction.hash)) {
           log(
@@ -223,26 +236,17 @@ export class SyncBlockchain extends Job {
 
 async function fetchMeta(dbTransaction?: SequelizeTransaction): Promise<{
   latestTransaction: {
-    lt: bigint;
     hash: Buffer;
   };
 }> {
-  const [parentLt, parentHash]: [bigint, string] = await Promise.all([
-    Meta.findOne({
-      where: { key: "latestTransactionLogicalTime" satisfies MetaKey },
-      transaction: dbTransaction,
-      attributes: ["value"],
-    }).then((meta) => (meta?.value ? BigInt(meta.value) : BigInt(0))),
-    Meta.findOne({
-      where: { key: "latestTransactionHash" satisfies MetaKey },
-      transaction: dbTransaction,
-      attributes: ["value"],
-    }).then((meta) => meta?.value || ""),
-  ]);
+  const parentHash = await Meta.findOne({
+    where: { key: "latestProcessedTransactionHash" satisfies MetaKey },
+    transaction: dbTransaction,
+    attributes: ["value"],
+  }).then((meta) => meta?.value || "");
 
   return {
     latestTransaction: {
-      lt: parentLt,
       hash: Buffer.from(parentHash, "hex"),
     },
   };
@@ -272,15 +276,12 @@ async function updateMeta(
     );
 
     if (
-      meta.latestTransaction.lt !== tonTransaction.prevTransactionLt ||
+      meta.latestTransaction.hash.length &&
       !meta.latestTransaction.hash.equals(prevTransactionHashBuffer)
     ) {
       console.log({
-        metaLatestTxLt: meta.latestTransaction.lt,
         metaLatestTxHash: meta.latestTransaction.hash,
-        txLt: tonTransaction.lt,
         txHash: tonTransaction.hash(),
-        txParentLt: tonTransaction.prevTransactionLt,
         txParentHash: prevTransactionHashBuffer,
       });
 
@@ -292,18 +293,7 @@ async function updateMeta(
 
     await Meta.upsert(
       {
-        key: "latestTransactionLogicalTime" satisfies MetaKey,
-        value: tonTransaction.lt.toString(),
-      },
-      {
-        conflictFields: ["key"],
-        transaction: dbTransaction,
-      },
-    );
-
-    await Meta.upsert(
-      {
-        key: "latestTransactionHash" satisfies MetaKey,
+        key: "latestProcessedTransactionHash" satisfies MetaKey,
         value: tonTransaction.hash().toString("hex"),
       },
       {
@@ -317,8 +307,7 @@ async function updateMeta(
     }
 
     console.log("Updated meta", {
-      latestTransactionLogicalTime: tonTransaction.lt.toString(),
-      latestTransactionHash: tonTransaction.hash().toString("hex"),
+      latestProcessedTransactionHash: tonTransaction.hash().toString("hex"),
     } satisfies Record<MetaKey, string>);
 
     return true;

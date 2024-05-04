@@ -7,7 +7,7 @@ import {
 } from "sequelize";
 import { sequelize } from "../lib/sequelize.js";
 
-export type Key = "latestTransactionLogicalTime" | "latestTransactionHash";
+export type Key = "latestProcessedTransactionHash";
 
 /**
  * A meta table storing application data in key-value format.

@@ -30,6 +30,7 @@ export const {
   TON_CLIENT_ENDPOINT,
   TON_CLIENT_API_KEY,
   TON_MAIN_ADDRESS_MNEMONICS,
+  TON_HISTORY_CUTOFF,
 
   GIVEAWAY_LINK_TEMPLATE,
   GIVEAWAY_SECRET,
@@ -61,6 +62,10 @@ export const {
     TON_CLIENT_ENDPOINT: z.string().url(),
     TON_CLIENT_API_KEY: z.string().optional(),
     TON_MAIN_ADDRESS_MNEMONICS: z.string().transform((x) => x.split(/\s+/)),
+    TON_HISTORY_CUTOFF: z
+      .string()
+      .transform((x) => new Date(parseInt(x) * 1000))
+      .optional(),
 
     GIVEAWAY_LINK_TEMPLATE: z.string(),
     GIVEAWAY_SECRET: z.string(),
