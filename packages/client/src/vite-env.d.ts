@@ -5,3 +5,5 @@ interface ImportMetaEnv {
   VITE_BACKEND_URL: string;
   VITE_TON_MAINNET: string;
 }
+
+declare module "vue-wrap-balancer" {}

@@ -8,10 +8,11 @@ import {
 import { type WalletConnectionSource } from "@tonconnect/sdk";
 import { jwt } from "../store";
 import { onMounted, onUnmounted, ref } from "vue";
-import { CheckIcon, FlameIcon, PlugIcon } from "lucide-vue-next";
+import { CheckIcon, FlameIcon, PlugIcon, UserPlus2Icon } from "lucide-vue-next";
 import { watchImmediate } from "@vueuse/core";
 import Countdown from "../components/Countdown.vue";
 import confetti from "canvas-confetti";
+import WrapBalancer from "vue-wrap-balancer";
 
 const JSBRIDGE_KEY = "mytonwallet";
 
@@ -205,7 +206,7 @@ onUnmounted(() => {
           span Prize pool:&nbsp;
           b.text-accent {{ parseFloat(giveaway.amount) * giveaway.receiverCount }} TON
         span
-          span Maximum participants:&nbsp;
+          span Maximum winners:&nbsp;
           b {{ giveaway.receiverCount }}
 
     Countdown.gap-2(
@@ -240,8 +241,12 @@ onUnmounted(() => {
         //- Step description.
         span(:class="{ 'line-through': participantStatus }")
           b Step 2:&nbsp;
+
+          //- When instant giveaway.
           span(v-if="giveaway.type === 'instant'") Claim your prize
-          span(v-else) Join the giveaway
+          //- When lottery giveaway.
+          span(v-else) Register to the lottery
+
           CheckIcon.inline-block.text-success.ml-1(
             v-if="participantStatus"
             :size="20"
@@ -252,19 +257,42 @@ onUnmounted(() => {
           @click="join"
           :disabled="!!participantStatus"
         )
+          //- When instant giveaway.
           template(v-if="giveaway.type === 'instant'")
             span(v-if="participantStatus") Already claimed!
             template(v-else)
               FlameIcon.inline-block(:size="24")
               span Claim
+
+          //- When lottery giveaway.
           template(v-else)
-            span(v-if="participantStatus") Already joined!
-            span(v-else) Join
+            span(v-if="participantStatus") Already registered!
+            template(v-else)
+              UserPlus2Icon.inline-block(:size="24")
+              span Register
 
       //- Step 3: Complete the task.
-      .flex.flex-col.items-center.gap-1(v-if="participantStatus")
-        template(v-if="participantStatus === 'awaitingTask'")
-          p Complete the task: {{ giveaway?.taskUrl }}
+      .flex.flex-col.items-center.gap-2(
+        v-if="participantStatus && giveaway.taskUrl"
+      )
+        span.text-center(
+          :class="{ 'line-through': participantStatus && participantStatus !== 'awaitingTask' }"
+        )
+          b Step 3:&nbsp;
+          | Complete the task
+          CheckIcon.inline-block.text-success.ml-1(
+            v-if="participantStatus"
+            :size="20"
+          )
+        a.pressable.transition-transform.text-primary.bg-base-300.px-4.py-3.rounded-lg.dz-link-hover.font-mono(
+          v-if="participantStatus === 'awaitingTask'"
+          :href="giveaway.taskUrl"
+        ) {{ giveaway.taskUrl }}
+        WrapBalancer.leading-snug.max-w-sm.text-center.text-sm(as="p")
+          template(v-if="giveaway.type === 'instant'") You'll get your prize after completing the task.
+          template(v-else)
+            template(v-if="participantStatus === 'awaitingTask'") Once you have completed the task, you become eligible to win the prize.
+            template(v-else) You have already completed the task, now wait for the lottery to end.
 
     template(v-else-if="giveaway?.status === 'pending'")
       p
