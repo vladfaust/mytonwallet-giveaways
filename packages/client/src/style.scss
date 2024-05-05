@@ -1,3 +1,9 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  .dz-btn {
+    @apply uppercase font-bold tracking-wide gap-1;
+  }
+}

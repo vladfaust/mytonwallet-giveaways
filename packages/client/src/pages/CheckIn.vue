@@ -7,9 +7,11 @@ import {
 } from "../lib/ton";
 import { type WalletConnectionSource } from "@tonconnect/sdk";
 import { jwt } from "../store";
-import { onMounted, onUnmounted, ref, watch } from "vue";
-import { CheckIcon } from "lucide-vue-next";
+import { onMounted, onUnmounted, ref } from "vue";
+import { CheckIcon, FlameIcon, PlugIcon } from "lucide-vue-next";
 import { watchImmediate } from "@vueuse/core";
+import Countdown from "../components/Countdown.vue";
+import confetti from "canvas-confetti";
 
 const JSBRIDGE_KEY = "mytonwallet";
 
@@ -17,8 +19,16 @@ const { giveawayId } = defineProps<{ giveawayId: string }>();
 
 const giveaway = ref<
   | {
+      type: "instant" | "lottery";
+      status: "pending" | "active" | "finished";
+      endsAt: string | null;
       taskUrl: string | null;
+      amount: string;
+      receiverCount: number;
+      participantCount: number;
+      giveawayLink: string;
     }
+  | null
   | undefined
 >();
 let unsubscribe: (() => void) | undefined;
@@ -149,6 +159,29 @@ watchImmediate(
   },
 );
 
+watchImmediate(
+  () => participantStatus.value,
+  (status) => {
+    if (status === "awaitingPayment" || status === "paid") {
+      launchConfetti();
+    }
+  },
+);
+
+function launchConfetti() {
+  // Left side.
+  confetti({
+    origin: { x: 0, y: 1 },
+    angle: 60,
+  });
+
+  // Right side.
+  confetti({
+    origin: { x: 1, y: 1 },
+    angle: 90 + 30,
+  });
+}
+
 onMounted(async () => {
   giveaway.value = await fetchGiveaway();
 });
@@ -160,47 +193,99 @@ onUnmounted(() => {
 
 <template lang="pug">
 .grid.place-items-center.h-screen
-  .flex.flex-col.items-center.p-4.gap-2
-    .flex.flex-col.items-center
-      h1.text-xl.tracking-wide.font-semibold.uppercase Giveaway
-      span
-        b ID:&nbsp;
-        span.font-mono {{ giveawayId }}
-      code(v-if="participantStatus") {{ participantStatus }}
+  .flex.flex-col.items-center.p-3.gap-2
+    .flex.flex-col.items-center(v-if="giveaway")
+      h1.mb-2.text-2xl.tracking-wider.font-bold.uppercase.italic
+        span(v-if="giveaway.type === 'instant'")
+          | ⚡️ Instant Giveaway ⚡️
+        span(v-else) 🎲 Lottery 🎲
 
-    template(v-if="restoringConnection")
+      .flex.p-3.gap-2.items-center.bg-base-200.rounded-xl.max-w-sm.w-full.flex-col
+        span
+          span Prize pool:&nbsp;
+          b.text-accent {{ parseFloat(giveaway.amount) * giveaway.receiverCount }} TON
+        span
+          span Maximum participants:&nbsp;
+          b {{ giveaway.receiverCount }}
+
+    Countdown.gap-2(
+      v-if="giveaway?.endsAt && giveaway.status === 'active' && new Date(giveaway.endsAt) > new Date()"
+      :endsAt="new Date(giveaway.endsAt)"
+    )
+
+    template(v-if="restoringConnection || giveaway === undefined")
       span.dz-loading.dz-loading-spinner.dz-loading-lg
 
-    template(v-else)
-      .flex.flex-col.items-center.gap-1
+    template(v-else-if="giveaway?.status === 'active'")
+      //- Step 1: Connect wallet.
+      .flex.flex-col.items-center.gap-2
         span(:class="{ 'line-through': wallet }")
           b Step 1:
           |
-          | Connect MyTonWallet
-          CheckIcon.inline-block.text-success.ml-1(v-if="wallet" :size="20")
-        button.dz-btn.dz-btn-primary(@click="connectWallet" :disabled="wallet")
-          span(v-if="wallet") Already connected
-          span(v-else) Connect
-
-      .flex.flex-col.items-center.gap-1(v-if="participantStatus || wallet")
-        span(:class="{ 'line-through': participantStatus }")
-          b Step 2:
+          | Connect
           |
-          | Join the giveaway
+          a.dz-link(href="https://mytonwallet.io/") MyTonWallet
+          CheckIcon.inline-block.text-success.ml-1(v-if="wallet" :size="20")
+        button.dz-btn.dz-btn-primary.items-center.gap-1(
+          @click="connectWallet"
+          :disabled="!!wallet"
+        )
+          span(v-if="wallet") Already connected!
+          template(v-else)
+            PlugIcon.inline-block(:size="24")
+            span Connect
+
+      //- Step 2: Check in.
+      .flex.flex-col.items-center.gap-2(v-if="participantStatus || wallet")
+        //- Step description.
+        span(:class="{ 'line-through': participantStatus }")
+          b Step 2:&nbsp;
+          span(v-if="giveaway.type === 'instant'") Claim your prize
+          span(v-else) Join the giveaway
           CheckIcon.inline-block.text-success.ml-1(
             v-if="participantStatus"
             :size="20"
           )
+
+        //- Button.
         button.dz-btn.dz-btn-primary(
           @click="join"
-          :disabled="participantStatus"
+          :disabled="!!participantStatus"
         )
-          span(v-if="participantStatus") Already joined
-          span(v-else) Join
+          template(v-if="giveaway.type === 'instant'")
+            span(v-if="participantStatus") Already claimed!
+            template(v-else)
+              FlameIcon.inline-block(:size="24")
+              span Claim
+          template(v-else)
+            span(v-if="participantStatus") Already joined!
+            span(v-else) Join
 
+      //- Step 3: Complete the task.
       .flex.flex-col.items-center.gap-1(v-if="participantStatus")
         template(v-if="participantStatus === 'awaitingTask'")
           p Complete the task: {{ giveaway?.taskUrl }}
+
+    template(v-else-if="giveaway?.status === 'pending'")
+      p
+        .inline-block.animate-spin.mr-1 ⏳
+        | This giveaway has not started yet.
+
+    template(v-else-if="giveaway?.status === 'finished'")
+      p.text-lg.text-accent.font-bold
+        | This giveaway has ended. 🏁
+
+    template(v-else)
+      p.text-lg.text-error.font-bold
+        | This giveaway does not exist. 💀💀💀
+
+    //- Explanation text.
+    p.text-secondary.leading-snug.text-center(
+      v-if="(participantStatus === 'awaitingPayment' || participantStatus === 'paid') && giveaway?.type === 'instant'"
+    )
+      b.text-lg You have claimed the prize! 🎉
+      br
+      | Please wait for the payment of {{ giveaway.amount }} TON to your wallet.
 
 .flex.gap-2.p-2.items-center.absolute.bottom-0.w-full.bg-base-200.justify-center(
   v-if="wallet"

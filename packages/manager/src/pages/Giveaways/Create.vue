@@ -2,7 +2,8 @@
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { routeLocation } from "../../router";
-import { OctagonAlertIcon } from "lucide-vue-next";
+import { RocketIcon } from "lucide-vue-next";
+import CustomInput from "./Create/CustomInput.vue";
 
 const router = useRouter();
 
@@ -41,6 +42,11 @@ const errors = computed<Record<keyof typeof model.value, string | null>>(() => {
     amount = "Amount must be greater than 0.";
   }
 
+  let receiverCount: string | null = null;
+  if (model.value.receiverCount <= 0) {
+    receiverCount = "Receiver count must be greater than 0.";
+  }
+
   let secret: string | null = null;
   if (!model.value.secret) {
     secret = "Secret is required.";
@@ -51,7 +57,7 @@ const errors = computed<Record<keyof typeof model.value, string | null>>(() => {
     endsAt,
     tokenAddress: null,
     amount,
-    receiverCount: null,
+    receiverCount,
     taskUrl: null,
     secret,
   };
@@ -91,101 +97,88 @@ async function submit() {
 </script>
 
 <template lang="pug">
-.flex.flex-col.items-center.gap-y-2.p-3
-  h1.text-2xl.font-semibold.tracking-wide.uppercase Create giveaway
-  form.grid.gap-y-3.gap-x-3.p-4.bg-base-200.rounded-xl.max-w-md(
+.flex.flex-col.items-center.gap-2.py-4(class="sm:px-4")
+  h1.text-2xl.font-bold.tracking-wider.uppercase.italic Create giveaway
+  form.grid.gap-y-3.gap-x-2.p-3.bg-base-200.rounded-xl.w-full.max-w-md(
     @submit.prevent="submit"
-    style="grid-template-columns: repeat(2, auto)"
+    style="grid-template-columns: minmax(min-content, 10rem) auto"
   )
-    //-Type.
-    .label-wrapper
-      label(for="type") Type
-    select#type.dz-select.dz-select-bordered(v-model="model.type")
-      option(value="instant") Instant
-      option(value="lottery") Lottery
-
-    //-Ends at.
-    .label-wrapper
-      label(for="endsAt") Ends at
-    input#endsAt.dz-input.dz-input-bordered(
-      type="datetime-local"
-      v-model="model.endsAt"
-      :class="{ 'dz-input-error': errors.endsAt }"
+    //- Type.
+    CustomInput#type(
+      label="Type"
+      :error="errors.type"
+      tip="Instant giveaways are distributed instantly, while lottery giveaways are distributed at the end of the giveaway."
     )
-    template(v-if="errors.endsAt")
-      div
-      p.dz-alert.dz-alert-error
-        OctagonAlertIcon(:size="24")
-        p.font-medium {{ errors.endsAt }}
+      select#type.dz-select.dz-select-bordered(v-model="model.type")
+        option(value="instant") ⚡️ Instant
+        option(value="lottery") 🎲 Lottery
 
-    //-Token address.
-    .label-wrapper
-      label(for="tokenAddress") Token address
-    input#tokenAddress.dz-input.dz-input-bordered(
-      type="text"
-      v-model="model.tokenAddress"
-      placeholder="Leave empty for Toncoin"
-      disabled
+    //- Ends at.
+    CustomInput#endsAt(label="Ends at" :error="errors.endsAt")
+      input#endsAt.dz-input.dz-input-bordered(
+        type="datetime-local"
+        v-model="model.endsAt"
+        :class="{ 'dz-input-error': errors.endsAt }"
+      )
+
+    //- Token address.
+    CustomInput#tokenAddress(
+      label="Token address"
+      :error="errors.tokenAddress"
     )
+      input#tokenAddress.dz-input.dz-input-bordered(
+        type="text"
+        v-model="model.tokenAddress"
+        placeholder="Leave empty for Toncoin"
+        disabled
+      )
 
-    //-Amount.
-    .label-wrapper
-      label(for="amount") Token amount
-    input#amount.dz-input.dz-input-bordered(
-      type="number"
-      min="0"
-      step="any"
-      v-model="model.amount"
-      :class="{ 'dz-input-error': errors.amount }"
-      placeholder="Token amount (e.g. 1.0)"
+    //- Receiver count.
+    CustomInput#receiverCount(
+      label="Max. participants"
+      :error="errors.receiverCount"
     )
-    template(v-if="errors.amount")
-      div
-      p.dz-alert.dz-alert-error
-        OctagonAlertIcon(:size="24")
-        p.font-medium {{ errors.amount }}
+      input#receiverCount.dz-input.dz-input-bordered(
+        type="number"
+        min="1"
+        v-model="model.receiverCount"
+        :class="{ 'dz-input-error': errors.receiverCount }"
+        placeholder="Receiver count"
+      )
 
-    //-Receiver count.
-    .label-wrapper
-      label(for="receiverCount") Receiver count
-    input#receiverCount.dz-input.dz-input-bordered(
-      type="number"
-      min="1"
-      v-model="model.receiverCount"
-      placeholder="Receiver count"
+    //- Amount.
+    CustomInput#amount(label="Amount per participant" :error="errors.amount")
+      input#amount.dz-input.dz-input-bordered(
+        type="number"
+        min="0"
+        step="any"
+        v-model="model.amount"
+        :class="{ 'dz-input-error': errors.amount }"
+        placeholder="Token amount (e.g. 1.0)"
+      )
+
+    //- Task URL.
+    CustomInput#taskUrl(
+      label="Task URL"
+      :error="errors.taskUrl"
+      tip="For giveaways with tasks, a participant must complete the task to receive the prize."
     )
+      input#taskUrl.dz-input.dz-input-bordered(
+        type="url"
+        v-model="model.taskUrl"
+        placeholder="http://example.com/task"
+      )
 
-    //-Task URL.
-    .label-wrapper
-      label(for="taskUrl") Task URL
-    input#taskUrl.dz-input.dz-input-bordered(
-      type="url"
-      v-model="model.taskUrl"
-      placeholder="http://example.com/task"
-    )
+    //- Secret.
+    CustomInput#secret(label="Secret" :error="errors.secret")
+      input#secret.dz-input.dz-input-bordered(
+        type="password"
+        autocomplete="off"
+        v-model="model.secret"
+        :class="{ 'dz-input-error': errors.secret }"
+      )
 
-    //-Secret.
-    .label-wrapper
-      label(for="secret") Secret
-    input#secret.dz-input.dz-input-bordered(
-      type="password"
-      autocomplete="off"
-      v-model="model.secret"
-      :class="{ 'dz-input-error': errors.secret }"
-    )
-    template(v-if="errors.secret")
-      div
-      p.dz-alert.dz-alert-error
-        OctagonAlertIcon(:size="24")
-        p.font-medium {{ errors.secret }}
-
-    button.dz-btn-lg.dz-btn.dz-btn-primary.col-span-full(:disabled="!isValid") Create
+    button.dz-btn.dz-btn-primary.col-span-full(:disabled="!isValid")
+      RocketIcon(:size="20")
+      | Create
 </template>
-
-<style lang="scss" scoped>
-form {
-  .label-wrapper {
-    @apply flex items-center text-right justify-end font-semibold leading-tight;
-  }
-}
-</style>
