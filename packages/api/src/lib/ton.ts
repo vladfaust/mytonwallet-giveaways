@@ -103,6 +103,17 @@ export function addressFromRawBuffer(buffer: Buffer): Address {
   return new Address(workchain, hash);
 }
 
+/**
+ * Try to parse an address string, returning `null` if it is invalid.
+ */
+export function tryParseAddress(address: string): Address | null {
+  try {
+    return Address.parse(address);
+  } catch {
+    return null;
+  }
+}
+
 wrapTonClientRequest(() =>
   contract.getBalance().then((balance) => {
     console.log(

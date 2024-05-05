@@ -4,6 +4,7 @@ import { Address } from "ton";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import { sequelize } from "../../../lib/sequelize.js";
+import { tryParseAddress } from "../../../lib/ton.js";
 import { zodTypedParse } from "../../../lib/utils.js";
 import { Giveaway } from "../../../models/giveaway.js";
 import { Participant } from "../../../models/participant.js";
@@ -15,7 +16,16 @@ import {
 
 const RequestBodySchema = z.object({
   taskToken: z.string().min(1),
-  receiverAddress: z.string().transform((x) => Address.parse(x)),
+  receiverAddress: z
+    .string()
+    .refine(tryParseAddress, { message: "Invalid receiver address" })
+
+    // NOTE: To avoid `this` binding error in a static method,
+    // they should replace `this.parseRaw` with `Address.parseRaw`.
+    //
+    // .transform(Address.parse),
+
+    .transform((x) => Address.parse(x)),
 });
 
 export default Router()
@@ -55,7 +65,7 @@ export default Router()
       });
 
       if (!participant) {
-        return "Invalid receiver address";
+        return "Participant not found with this address";
       }
 
       if (participant.status !== "awaitingTask") {
