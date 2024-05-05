@@ -5,6 +5,8 @@ import { routeLocation } from "../../router";
 import { RocketIcon } from "lucide-vue-next";
 import CustomInput from "./Create/CustomInput.vue";
 import { db } from "../../lib/db";
+import { asyncComputed } from "@vueuse/core";
+import { getJettonData } from "../../lib/api";
 
 const router = useRouter();
 
@@ -20,11 +22,19 @@ const model = ref<{
   type: "instant",
   endsAt: null,
   tokenAddress: null,
-  amount: 2.5,
+  amount: 1,
   receiverCount: 1,
   taskUrl: null,
   secret: "",
 });
+
+const jettonDataEvaluting = ref(false);
+const jettonData = asyncComputed(
+  () =>
+    model.value.tokenAddress ? getJettonData(model.value.tokenAddress) : null,
+  null,
+  { evaluating: jettonDataEvaluting },
+);
 
 const errors = computed<Record<keyof typeof model.value, string | null>>(() => {
   let endsAt: string | null = null;
@@ -140,7 +150,6 @@ async function submit() {
         type="text"
         v-model="model.tokenAddress"
         placeholder="Leave empty for Toncoin"
-        disabled
       )
 
     //- Receiver count.
@@ -158,14 +167,18 @@ async function submit() {
 
     //- Amount.
     CustomInput#amount(label="Amount per participant" :error="errors.amount")
-      input#amount.dz-input.dz-input-bordered(
-        type="number"
-        min="0"
-        step="any"
-        v-model="model.amount"
-        :class="{ 'dz-input-error': errors.amount }"
-        placeholder="Token amount (e.g. 1.0)"
-      )
+      .dz-join
+        input#amount.dz-input.dz-input-bordered.dz-join-item(
+          type="number"
+          min="0"
+          step="any"
+          v-model="model.amount"
+          :class="{ 'dz-input-error': errors.amount }"
+          placeholder="Token amount (e.g. 1.0)"
+        )
+        .rounded-l-none.dz-input.dz-input-bordered.items-center.flex
+          b(v-if="!jettonDataEvaluting") {{ jettonData?.metadata.metadata.symbol || "TON" }}
+          .dz-loading.dz-loading-spinner.dz-loading-sm(v-else)
 
     //- Task URL.
     CustomInput#taskUrl(

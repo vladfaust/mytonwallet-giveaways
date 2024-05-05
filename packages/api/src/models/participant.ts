@@ -16,7 +16,7 @@ export class Participant extends Model<
 > {
   declare id: CreationOptional<number>;
   declare giveawayId: ForeignKey<Giveaway["id"]>;
-  declare giveaway?: NonAttribute<Giveaway>;
+  declare Giveaway?: NonAttribute<Giveaway>;
   declare receiverAddress: Buffer;
   declare status:
     | "awaitingTask"
@@ -75,4 +75,4 @@ Participant.init(
 );
 
 Giveaway.hasMany(Participant);
-Participant.belongsTo(Giveaway);
+Participant.belongsTo(Giveaway, { foreignKey: "giveawayId" });

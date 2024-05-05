@@ -2,10 +2,10 @@ import { Router } from "express";
 import { fromNano } from "ton";
 import { z } from "zod";
 import { GIVEAWAY_LINK_TEMPLATE } from "../../../env.js";
-import { bounceable, contract, testOnly } from "../../../lib/ton.js";
+import { addressFromRawBuffer } from "../../../lib/ton.js";
 import { zodTypedParse } from "../../../lib/utils.js";
 import { Giveaway } from "../../../models/giveaway.js";
-import { countParticipants, sendError } from "./_common.js";
+import { buildTopUpLink, countParticipants, sendError } from "./_common.js";
 import { NewGiveawaySchema } from "./create.js";
 
 export const GiveawaySchema = NewGiveawaySchema.extend({
@@ -34,13 +34,15 @@ export default Router().get("/giveaways/:giveawayId", async (req, res) => {
       type: giveaway.type,
       status: giveaway.status,
       endsAt: giveaway.endsAt?.toString() ?? null,
-      tokenAddress: giveaway.tokenAddress ?? null,
+      tokenAddress: giveaway.tokenAddress
+        ? addressFromRawBuffer(giveaway.tokenAddress).toRawString()
+        : null,
       amount: fromNano(giveaway.amount),
       receiverCount: giveaway.receiverCount,
       taskUrl: giveaway.taskUrl ?? null,
       participantCount: await countParticipants(giveaway.id),
       giveawayLink: GIVEAWAY_LINK_TEMPLATE.replace(":id", giveaway.id),
-      topUpLink: `ton://transfer/${contract.address.toString({ testOnly, bounceable })}?token=${giveaway.tokenAddress}&amount=${BigInt(giveaway.amount) * BigInt(giveaway.receiverCount)}&text=${giveaway.id}`,
+      topUpLink: buildTopUpLink(giveaway).toString(),
     }),
   );
 });

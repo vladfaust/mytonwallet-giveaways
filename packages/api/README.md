@@ -23,3 +23,8 @@ Codebase-database mismatch due to weak typing is common, leading to runtime erro
 
 Another alternative is [Prisma](https://prisma.io).
 I've used it in the past, but it imbues great vendor lock-in in my opinion (`.prisma` schema, proprietary real-time updates solution etc.).
+
+## Notes
+
+- TON addresses are stored in PostgreSQL as `Address.toRaw()` BLOBs.
+- Many low hanging database optimizations (indices, proper transaction options, hand-picked columns to select etc.) are left out for the sake of development speed & simplicity.

@@ -8,6 +8,8 @@ import { asyncComputed, useClipboard } from "@vueuse/core";
 import qrcode from "qrcode";
 import { db } from "../../lib/db";
 import CopyButton from "../../components/CopyButton.vue";
+import { getJettonData } from "../../lib/api";
+import { toUserFriendlyAddress } from "@tonconnect/sdk";
 
 type Giveaway = {
   id: string;
@@ -33,7 +35,6 @@ const giveawayLoading = ref(true);
 const giveawayLinkClipboard = useClipboard();
 const taskLinkClipboard = useClipboard();
 const taskCallbackLinkClipboard = useClipboard();
-const taskCallbackJsonClipboard = useClipboard();
 
 const topUpQrCodeDataUrl = asyncComputed(() =>
   giveaway.value ? qrcode.toDataURL(giveaway.value.topUpLink) : undefined,
@@ -62,6 +63,21 @@ const taskCallbackObject = computed(() =>
         receiverAddress: "<Participant TON address>",
       }
     : undefined,
+);
+
+const jettonDataEvaluating = ref(false);
+const jettonData = asyncComputed(
+  () =>
+    giveaway.value?.tokenAddress
+      ? getJettonData(giveaway.value.tokenAddress)
+      : null,
+  null,
+  { evaluating: jettonDataEvaluating },
+);
+const tokenSymbol = computed(() =>
+  jettonDataEvaluating.value
+    ? "…"
+    : jettonData.value?.metadata.metadata.symbol ?? "TON",
 );
 
 onMounted(async () => {
@@ -122,7 +138,13 @@ onMounted(async () => {
             img.rounded-lg(:src="topUpQrCodeDataUrl")
             a.dz-btn.dz-btn-primary.w-max(:href="giveaway.topUpLink")
               CurrencyIcon(:size="20")
-              | Pay {{ giveaway.amount * giveaway.receiverCount }} TON
+              | Pay {{ giveaway.amount * giveaway.receiverCount }}
+              |
+              span.dz-loading.dz-loading-spinner.dz-loading-sm(
+                v-if="jettonDataEvaluating"
+              )
+              span(v-else-if="jettonData") {{ jettonData.metadata.metadata.symbol }}
+              span(v-else) TON
 
           template(v-else) 🏁 Finished
 
@@ -138,8 +160,17 @@ onMounted(async () => {
 
         //- Token address, if any.
         .attribute-wrapper(v-if="giveaway.tokenAddress")
-          span.attribute-label Token address
-          span {{ giveaway.tokenAddress }}
+          span.attribute-label Custom token
+          template(v-if="jettonData")
+            span.text-center
+              b Address:&nbsp;
+              code {{ toUserFriendlyAddress(giveaway.tokenAddress) }}
+            span.text-center
+              b Name:&nbsp;
+              | {{ jettonData.metadata.metadata.name }} (
+              b {{ jettonData.metadata.metadata.symbol }}
+              | )
+          .dz-loading-spinner.dz-loading(v-else)
 
         //- Task completion information.
         .attribute-wrapper(v-if="giveaway.taskUrl")
@@ -191,8 +222,8 @@ onMounted(async () => {
         //- Prize.
         .attribute-wrapper
           span.attribute-label Prize
-          span.leading-snug.text-lg {{ giveaway.amount * giveaway.receiverCount }} {{ giveaway.tokenAddress ? "token" : "TON" }} total
-          span.leading-snug {{ giveaway.amount }} {{ giveaway.tokenAddress ? "token" : "TON" }} per participant
+          span.leading-snug.text-lg {{ giveaway.amount * giveaway.receiverCount }} {{ tokenSymbol }} total
+          span.leading-snug {{ giveaway.amount }} {{ tokenSymbol }} per participant
 
         //- Participants.
         .attribute-wrapper

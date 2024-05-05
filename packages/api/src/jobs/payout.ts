@@ -1,16 +1,24 @@
 import { Job } from "bullmq";
-import { SendMode, fromNano, internal } from "ton";
+import {
+  JettonMaster,
+  MessageRelaxed,
+  SendMode,
+  fromNano,
+  internal,
+  toNano,
+} from "ton";
 import { GIVEAWAY_LINK_TEMPLATE } from "../env.js";
+import { createTransferBody, readJettonMetadata } from "../lib/jetton.js";
 import { sequelize } from "../lib/sequelize.js";
 import {
   addressFromRawBuffer,
+  client,
   contract,
   keyPair,
   wrapTonClientRequest,
 } from "../lib/ton.js";
 import { Giveaway } from "../models/giveaway.js";
 import { Participant } from "../models/participant.js";
-import { countParticipants } from "../web/routes/giveaways/_common.js";
 
 /**
  * From the specification (_wording_):
@@ -20,15 +28,11 @@ import { countParticipants } from "../web/routes/giveaways/_common.js";
  * > and update status to `"paid"`. The `TON_MAIN_ADDRESS_MNEMONICS`
  * > environment variable is used for signing transactions.
  *
- * SAFETY: It is not possible to make simultaneous database updates
- * and blockchain transactions, therefore we'd have to choose one
- * of the following: either to allow false-positive payouts (payed out in DB,
- * but not in real world), or to allow duplicate payouts.
- * The former is more acceptable for business reasons.
- *
- * SAFETY: This job can be run concurrently due to row-level participant locking.
+ * SAFETY: A DB transaction would not commit if the TON transaction fails,
+ * but it may rollback or network-fail AFTER the TON transaction is made,
+ * potentially leading to double payouts. It may be mitigated
+ * with a robust outgoing transaction monitoring mechanism.
  */
-// TODO: Arbitrary token payouts, not only TON.
 export class Payout extends Job {
   static async perform(job: Payout) {
     // Output logs to both the job and the console.
@@ -39,125 +43,140 @@ export class Payout extends Job {
 
     let participants: Participant[] = [];
     do {
-      await sequelize.transaction(async (transaction) => {
-        participants = await Participant.findAll({
-          where: { status: "awaitingPayment" },
-          limit: 10,
-          lock: true,
-          skipLocked: true,
-          transaction,
-        });
-
-        if (!participants.length) {
-          return;
-        }
-
-        log(`Found ${participants.length} participants awaiting payment.`);
-
-        // NOTE: Can not lock for update with joins,
-        // so giveaways shall be fetched separately.
-        //
-        const giveaways = await Giveaway.findAll({
-          where: { id: participants.map((p) => p.giveawayId) },
-          attributes: ["id", "amount", "tokenAddress", "receiverCount"],
-          transaction,
-        });
-
-        function findParticipantGiveaway(participant: Participant): Giveaway {
-          return giveaways.find(
-            (giveaway) => giveaway.id === participant.giveawayId,
-          )!;
-        }
-
-        // 1. Make blockchain transfers.
-        //
-
-        const seqno = await wrapTonClientRequest(
-          () => contract.getSeqno(),
-          log,
-        );
-
-        const transfer = contract.createTransfer({
-          seqno,
-          secretKey: keyPair.secretKey,
-          sendMode: SendMode.PAY_GAS_SEPARATELY,
-          messages: participants.map((participant) =>
-            internal({
-              to: addressFromRawBuffer(participant.receiverAddress),
-              value: BigInt(findParticipantGiveaway(participant).amount),
-              body: GIVEAWAY_LINK_TEMPLATE.replace(
-                ":id",
-                participant.giveawayId,
-              ),
-            }),
-          ),
-        });
-
-        // (seqno 42) Sending 30.0 TON to 2 addresses: 10.0 TON -> 0:abc (giveaway 69), 20.0 TON -> 0:def (giveaway 420)...
-        log(
-          `(seqno ${seqno}) Sending ${fromNano(participants.reduce((sum, p) => sum + BigInt(findParticipantGiveaway(p).amount), BigInt(0)))} TON to ${participants.length} addresses: ${participants
-            .map(
-              (p) =>
-                `${fromNano(findParticipantGiveaway(p).amount)} TON -> ${addressFromRawBuffer(
-                  p.receiverAddress,
-                ).toRawString()} (giveaway ${p.giveawayId})`,
-            )
-            .join(", ")}...`,
-        );
-
-        // TODO: Check transaction status, presumably by
-        // comparing incoming transactions' message cells.
-        await wrapTonClientRequest(() => contract.send(transfer), log);
-
-        // 2. Update DB statuses.
-        //
-
-        await Participant.update(
-          {
-            status: "paid",
-          },
-          {
-            where: {
-              id: participants.map((p) => p.id),
-            },
-            transaction,
-          },
-        );
-
-        log(`Updated ${participants.length} participants' statuses to "paid".`);
-
-        // Update giveaway statuses to "finished" if all participants are paid.
-        //
-        // NOTE(perf.): Could've updated giveways one-by-one
-        // in loop, but instead chose to do it in bulk.
-        //
-        // OPTIMIZE: It is possible to build a single query
-        // to find and update all matching giveaways at once.
-        const giveawayIdsToFinish = new Set<string>();
-        for (const giveaway of giveaways) {
-          const participantsCount = await countParticipants(giveaway.id);
-
-          if (participantsCount >= giveaway.receiverCount) {
-            giveawayIdsToFinish.add(giveaway.id);
-          }
-        }
-
-        if (giveawayIdsToFinish.size) {
-          await Giveaway.update(
-            { status: "finished" },
-            {
-              where: { id: [...giveawayIdsToFinish] },
-              transaction,
-            },
-          );
-
-          log(
-            `Updated giveaway statuses to "finished": ${[...giveawayIdsToFinish].join(", ")}.`,
-          );
-        }
+      participants = await Participant.findAll({
+        where: { status: "awaitingPayment" },
+        include: [{ model: Giveaway }],
+        limit: 10,
       });
+
+      if (!participants.length) {
+        break;
+      }
+
+      log(`Found ${participants.length} participants awaiting payment.`);
+
+      for (const participant of participants) {
+        const giveaway = participant.Giveaway!;
+
+        if (giveaway.tokenAddress) {
+          // Send Jetton transfer with a comment.
+          //
+          // @see https://docs.ton.org/develop/dapps/asset-processing/jettons#how-to-send-jetton-transfers-with-comments-and-notifications
+          //
+
+          // First 4 bytes are tag of text comment.
+          const comment = new Uint8Array([
+            ...new Uint8Array(4),
+            ...new TextEncoder().encode(
+              GIVEAWAY_LINK_TEMPLATE.replace(":id", giveaway.id),
+            ),
+          ]);
+
+          const jettonMaster = client.open(
+            JettonMaster.create(addressFromRawBuffer(giveaway.tokenAddress)),
+          );
+
+          const jettonWalletAddress = await jettonMaster.getWalletAddress(
+            contract.address,
+          );
+
+          const data = await jettonMaster.getJettonData();
+          const metadata = await readJettonMetadata(data.content);
+
+          await wrapTransfer(
+            participant.id,
+            BigInt(giveaway.amount),
+            metadata.metadata.symbol || "jetton",
+            [
+              internal({
+                to: jettonWalletAddress,
+                value: toNano("0.05"), // Total amount of TONs attached to the transfer message.
+                body: createTransferBody({
+                  jettonAmount: BigInt(giveaway.amount), // Actual Jetton amount to send.
+                  toAddress: addressFromRawBuffer(participant.receiverAddress), // Recipient user's wallet address.
+                  responseAddress: contract.address, // Return the TONs after deducting commissions back to the sender's wallet address.
+                  forwardAmount: toNano("0.01"), // Some amount of TONs sent to the receiver to invoke transfer notification message.
+                  forwardPayload: comment, // Text comment for Transfer notification message.
+                }),
+              }),
+            ],
+            log,
+          );
+        } else {
+          // Send a simple TON transfer with comment.
+          await wrapTransfer(
+            participant.id,
+            BigInt(giveaway.amount),
+            "TON",
+            [
+              internal({
+                to: addressFromRawBuffer(participant.receiverAddress),
+                value: BigInt(giveaway.amount),
+                body: GIVEAWAY_LINK_TEMPLATE.replace(":id", giveaway.id),
+              }),
+            ],
+            log,
+          );
+        }
+      }
     } while (participants.length > 0);
 
     log("No (more) payouts to be done.");
   }
+}
+
+/**
+ * Wraps a blockchain transfer with a database transaction.
+ */
+async function wrapTransfer(
+  participantId: number,
+  amount: bigint,
+  symbol: string,
+  messages: MessageRelaxed[],
+  log = console.log,
+) {
+  // Wrap the transfer in a transaction to ensure integrity.
+  return sequelize.transaction(async (transaction) => {
+    const participant = await Participant.findByPk(participantId, {
+      include: [{ model: Giveaway }],
+      transaction,
+    });
+
+    if (participant?.status !== "awaitingPayment") {
+      return log(`Participant ${participantId} is no longer awaiting payment.`);
+    }
+
+    // [Giveaway <id>] Sending <amount> <symbol> to <address>...
+    log(
+      `[Giveaway ${participant.giveawayId}] Sending ${fromNano(
+        amount,
+      )} ${symbol} to ${addressFromRawBuffer(participant.receiverAddress)}...`,
+    );
+
+    // Send the transfer to the blockchain.
+    try {
+      await wrapTonClientRequest(
+        async () =>
+          contract.sendTransfer({
+            seqno: await contract.getSeqno(),
+            secretKey: keyPair.secretKey,
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            messages,
+          }),
+        log,
+        { retries: 3 },
+      );
+    } catch (e) {
+      // NOTE: The transaction will be rolled back if the transfer fails.
+      // Would try again in the next job run.
+      log(`Failed to send transfer: ${e}`);
+      await transaction.rollback();
+      return;
+    }
+
+    // Update the participant status in the database.
+    // NOTE: Here the DB connection may be lost, leading to a double payout.
+    await participant.update({ status: "paid" }, { transaction });
+    log(`Updated participant ${participant.id} status to "paid".`);
+  });
 }

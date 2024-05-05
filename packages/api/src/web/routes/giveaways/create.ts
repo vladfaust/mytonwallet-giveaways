@@ -1,14 +1,14 @@
 import bodyParser from "body-parser";
 import { Router } from "express";
 import { nanoid } from "nanoid";
-import { toNano } from "ton";
+import { Address, toNano } from "ton";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import { GIVEAWAY_LINK_TEMPLATE, GIVEAWAY_SECRET } from "../../../env.js";
-import { bounceable, contract, testOnly } from "../../../lib/ton.js";
+import { tryParseAddress } from "../../../lib/ton.js";
 import { zodTypedParse } from "../../../lib/utils.js";
 import { Giveaway } from "../../../models/giveaway.js";
-import { sendError } from "./_common.js";
+import { buildTopUpLink, sendError } from "./_common.js";
 
 export const NewGiveawaySchema = z.object({
   type: z.enum(["instant", "lottery"]),
@@ -20,7 +20,11 @@ export const NewGiveawaySchema = z.object({
     .refine((x) => new Date(x), { message: "Invalid date" })
     .nullable(),
 
-  tokenAddress: z.string().nullable(),
+  tokenAddress: z
+    .string()
+    .refine(tryParseAddress, { message: "Invalid token address." })
+    .nullable(),
+
   amount: z.string().refine((x) => Number(x), {
     message: "Amount must be a positive decimal number, e.g. 1.0",
   }),
@@ -58,6 +62,9 @@ export default Router()
 
     const giveaway = await Giveaway.create({
       ...body.data.giveaway,
+      tokenAddress: body.data.giveaway.tokenAddress
+        ? Address.parse(body.data.giveaway.tokenAddress).toRaw()
+        : undefined,
       endsAt: body.data.giveaway.endsAt
         ? new Date(body.data.giveaway.endsAt)
         : undefined,
@@ -69,7 +76,7 @@ export default Router()
       zodTypedParse(SuccessResponseSchema, {
         id: giveaway.id,
         giveawayLink: GIVEAWAY_LINK_TEMPLATE.replace(":id", giveaway.id),
-        topUpLink: `ton://transfer/${contract.address.toString({ testOnly, bounceable })}?token=${giveaway.tokenAddress}&amount=${BigInt(giveaway.amount) * BigInt(giveaway.receiverCount)}&text=${giveaway.id}`,
+        topUpLink: buildTopUpLink(giveaway).toString(),
         taskToken: giveaway.taskToken,
       }),
     );

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { JWT_SECRET } from "../../../env.js";
 import { sequelize } from "../../../lib/sequelize.js";
+import { addressFromRawBuffer, testOnly } from "../../../lib/ton.js";
 import { zodTypedParse } from "../../../lib/utils.js";
 import { Giveaway } from "../../../models/giveaway.js";
 import { Participant } from "../../../models/participant.js";
@@ -162,7 +163,12 @@ export default Router()
           type: result.giveaway.type,
           status: result.giveaway.status,
           endsAt: result.giveaway.endsAt?.toString() ?? null,
-          tokenAddress: result.giveaway.tokenAddress ?? null,
+          tokenAddress: result.giveaway.tokenAddress
+            ? addressFromRawBuffer(result.giveaway.tokenAddress).toString({
+                testOnly,
+                bounceable: true,
+              })
+            : null,
           amount: fromNano(result.giveaway.amount),
           receiverCount: result.giveaway.receiverCount,
           taskUrl: result.giveaway.taskUrl ?? null,

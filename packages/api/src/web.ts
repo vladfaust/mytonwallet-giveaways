@@ -8,6 +8,7 @@ import {
 } from "./env.js";
 import * as bull from "./web/routes/bull.js";
 import giveaways from "./web/routes/giveaways.js";
+import jetton from "./web/routes/jetton.js";
 import tonconnect from "./web/routes/tonconnect.js";
 
 const app = express();
@@ -27,6 +28,7 @@ app.use(
 
 app.use(tonconnect);
 app.use(giveaways);
+app.use(jetton);
 
 app.listen(PORT, HOST, () => {
   console.log(`Server listening on http://${HOST}:${PORT}`);

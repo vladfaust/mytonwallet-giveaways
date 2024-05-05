@@ -1,12 +1,14 @@
 import { Job } from "bullmq";
 import { Transaction as SequelizeTransaction } from "sequelize";
-import { fromNano, Transaction as TonTransaction } from "ton";
+import { Address, fromNano, Transaction as TonTransaction } from "ton";
 import { TON_HISTORY_CUTOFF } from "../env.js";
 import { sequelize } from "../lib/sequelize.js";
 import {
+  addressFromRawBuffer,
   client,
   contract,
-  parseMessageBodyString,
+  getJettonMasterAddress,
+  parseTransactionMessageBody,
   wrapTonClientRequest,
 } from "../lib/ton.js";
 import { Giveaway } from "../models/giveaway.js";
@@ -23,7 +25,6 @@ import { Transaction as AppTransaction } from "../models/transaction.js";
  * SAFETY: Database is updated atomically, therefore
  * the job is both fail- and concurrent-safe.
  */
-// TODO: Arbitrary token (not just TON) transactions.
 export class SyncBlockchain extends Job {
   static async perform(job: SyncBlockchain) {
     // Output logs to both the job and the console.
@@ -141,46 +142,105 @@ export class SyncBlockchain extends Job {
         }
 
         if (to.equals(contract.address)) {
-          let comment = parseMessageBodyString(body);
+          const messageBody = parseTransactionMessageBody(body);
 
-          if (typeof comment !== "string") {
-            log(
-              `Received ${fromNano(value.coins)} TON from ${from.toString()}, but the comment is not a string; skip.`,
-            );
-
+          if (messageBody instanceof Buffer) {
+            log(`Incoming tx from ${from}, but the body is unknown; skip.`);
             await updateMeta(tonTransaction, undefined, log); // Ditto.
             continue;
           }
 
-          log(
-            `Received ${fromNano(value.coins)} TON from ${from.toString()} with comment "${comment}"...`,
-          );
+          if (!messageBody.comment) {
+            log(`Incoming tx from ${from}, but no comment; skip.`);
+            await updateMeta(tonTransaction, undefined, log); // Ditto.
+            continue;
+          }
+
+          let jettonTransaction: {
+            masterAddress: Address;
+            walletAddress: Address;
+            senderAddress: Address;
+            amount: bigint;
+          } | null = null;
+
+          if (messageBody.jetton) {
+            if (!(messageBody.jetton.from instanceof Address)) {
+              log(`Got Jetton from unknown address, skip.`);
+              await updateMeta(tonTransaction, undefined, log); // Ditto.
+              continue;
+            }
+
+            let jettonMasterAddress;
+            try {
+              jettonMasterAddress = await getJettonMasterAddress(from);
+            } catch (e: any) {
+              log(`Failed to get Jetton master address: ${e.message}, skip.`);
+              await updateMeta(tonTransaction, undefined, log); // Ditto.
+              continue;
+            }
+
+            jettonTransaction = {
+              masterAddress: jettonMasterAddress,
+              walletAddress: from,
+              senderAddress: messageBody.jetton.from,
+              amount: messageBody.jetton.amount,
+            };
+
+            log(
+              `Received ${fromNano(jettonTransaction.amount)} Jetton (${jettonTransaction.masterAddress}) from ${jettonTransaction.senderAddress} with comment "${messageBody.comment}"...`,
+            );
+          } else {
+            log(
+              `Received ${fromNano(value.coins)} TON from ${from} with comment "${messageBody.comment}"...`,
+            );
+          }
 
           await sequelize.transaction(async (dbTransaction) => {
             if (!(await updateMeta(tonTransaction, dbTransaction, log))) {
-              log(`Meta update error, skip.`);
-              return;
+              return log(`Meta update error, skip.`);
             }
 
             const giveaway = await Giveaway.findOne({
-              where: { id: comment },
-              attributes: ["id", "status", "amount", "receiverCount"],
+              where: { id: messageBody.comment! },
               transaction: dbTransaction,
             });
 
             if (!giveaway) {
-              log(`No giveaway found with ID ${comment}, skip.`);
-              return;
+              return log(
+                `No giveaway found with ID ${messageBody.comment!}, skip.`,
+              );
+            }
+
+            if (giveaway.tokenAddress) {
+              if (!jettonTransaction) {
+                return log(
+                  `[Giveaway ${giveaway.id}] Expected Jetton, got TON, skip.`,
+                );
+              } else if (
+                !addressFromRawBuffer(giveaway.tokenAddress).equals(
+                  jettonTransaction.masterAddress,
+                )
+              ) {
+                return log(
+                  `[Giveaway ${giveaway.id}] Jetton contract address mismatch, expected ${addressFromRawBuffer(giveaway.tokenAddress)}, got ${jettonTransaction.walletAddress}, skip.`,
+                );
+              }
+            } else if (jettonTransaction) {
+              return log(
+                `[Giveaway ${giveaway.id}] Expected TON, got Jetton, skip.`,
+              );
             }
 
             await AppTransaction.create(
               {
                 hash: tonTransaction.hash(),
                 logicalTime: tonTransaction.lt,
-                fromAddress: from.toRaw(),
+                fromAddress: jettonTransaction?.senderAddress
+                  ? jettonTransaction.senderAddress.toRaw()
+                  : from.toRaw(),
                 toAddress: to.toRaw(),
-                tokenAddress: null,
-                amount: value.coins,
+                tokenAddress: jettonTransaction?.walletAddress.toRaw(),
+                amount: jettonTransaction?.amount || value.coins,
                 giveawayId: giveaway.id,
                 transactionCreatedAt: new Date(tonTransaction.now * 1000),
               },
@@ -217,7 +277,7 @@ export class SyncBlockchain extends Job {
               }
             }
 
-            log(`TON transaction saved to DB.`);
+            return log(`TON transaction saved to DB.`);
           });
         } else if (from.equals(contract.address)) {
           // TODO: Handle outgoing transactions.

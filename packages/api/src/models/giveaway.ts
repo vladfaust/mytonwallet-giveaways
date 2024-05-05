@@ -16,7 +16,7 @@ export class Giveaway extends Model<
   declare type: "instant" | "lottery";
   declare status: CreationOptional<"pending" | "active" | "finished">;
   declare endsAt: Date | null;
-  declare tokenAddress: string | null;
+  declare tokenAddress: Buffer | null;
 
   /** Sequelize serializes BIGINT to strings. */
   declare amount: string;
@@ -49,8 +49,8 @@ Giveaway.init(
       type: DataTypes.DATE,
     },
     tokenAddress: {
-      type: DataTypes.STRING,
-      comment: "The token address for the giveaway, or NULL for Toncoin",
+      type: DataTypes.BLOB,
+      comment: "The Jetton address for the giveaway, or NULL for Toncoin",
     },
     amount: {
       type: DataTypes.BIGINT,
