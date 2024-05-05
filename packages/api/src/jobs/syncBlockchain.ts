@@ -253,8 +253,8 @@ async function fetchMeta(dbTransaction?: SequelizeTransaction): Promise<{
 }
 
 /**
- * Upserts the latest TON transaction [logical time] and [hash] meta values,
- * comparing the stored values with the provided transaction's.
+ * Upserts the latest TON transaction [hash] meta value,
+ * comparing the stored value with the provided transaction's.
  * @param tonTransaction The TON transaction to update the meta with.
  * @param dbTransactionArg An optional database transaction to use.
  * If not provided, the update will be wrapped in a new transaction.
