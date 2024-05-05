@@ -15,6 +15,12 @@ This template should help get you started developing with Vue 3 and TypeScript i
 - [DaisyUI](https://daisyui.com/) is a great Tailwind plugin that provides a lot of useful components out of the box.
 - [Lucide Icons](https://lucide.dev/) allow to achive a consistent look and feel across the application.
 
+### Data Storage
+
+As and ad hoc, I've chosen IndexedDB wrapped with [Dexie](https://dexie.org/) to store managed giveaways along with their sensitive data (i.e. task tokens) locally.
+Ideally, a fully-fledged authentication shall be implemented, such as Telegram Connect, and sensitive data shall only be returned to a giveaway creator.
+Relying on authentication with Telegram is a natural choice for a TON-based application, and it also fits the planned usage of Telegram Mini (Web) Application for the management bot.
+
 ## Recommended Setup
 
 - [VS Code](https://code.visualstudio.com/) + [Vue - Official](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (previously Volar) and disable Vetur

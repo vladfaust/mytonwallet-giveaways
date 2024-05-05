@@ -4,6 +4,7 @@ import { useRouter } from "vue-router";
 import { routeLocation } from "../../router";
 import { RocketIcon } from "lucide-vue-next";
 import CustomInput from "./Create/CustomInput.vue";
+import { db } from "../../lib/db";
 
 const router = useRouter();
 
@@ -70,25 +71,34 @@ const isValid = computed(() => {
 async function submit() {
   if (!isValid.value) return;
 
-  const { id } = await fetch(import.meta.env.VITE_API_URL + "/giveaways", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      giveaway: {
-        type: model.value.type,
-        endsAt: model.value.endsAt
-          ? new Date(model.value.endsAt).toISOString()
-          : null,
-        tokenAddress: model.value.tokenAddress ?? null,
-        amount: model.value.amount.toString(),
-        receiverCount: model.value.receiverCount,
-        taskUrl: model.value.taskUrl || null,
+  const { id, taskToken } = await fetch(
+    import.meta.env.VITE_API_URL + "/giveaways",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-      secret: model.value.secret,
-    }),
-  }).then((res) => res.json());
+      body: JSON.stringify({
+        giveaway: {
+          type: model.value.type,
+          endsAt: model.value.endsAt
+            ? new Date(model.value.endsAt).toISOString()
+            : null,
+          tokenAddress: model.value.tokenAddress ?? null,
+          amount: model.value.amount.toString(),
+          receiverCount: model.value.receiverCount,
+          taskUrl: model.value.taskUrl || null,
+        },
+        secret: model.value.secret,
+      }),
+    },
+  ).then((res) => res.json());
+
+  await db.giveaways.add({
+    id,
+    taskToken,
+    createdAt: new Date(),
+  });
 
   router.push(
     routeLocation({ name: "ShowGiveaway", params: { giveawayId: id } }),
@@ -97,7 +107,7 @@ async function submit() {
 </script>
 
 <template lang="pug">
-.flex.flex-col.items-center.gap-2.py-4(class="sm:px-4")
+.flex.flex-col.items-center.gap-2.py-3(class="sm:px-3")
   h1.text-2xl.font-bold.tracking-wider.uppercase.italic Create giveaway
   form.grid.gap-y-3.gap-x-2.p-3.bg-base-200.rounded-xl.w-full.max-w-md(
     @submit.prevent="submit"
