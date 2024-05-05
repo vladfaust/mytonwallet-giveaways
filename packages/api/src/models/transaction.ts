@@ -95,11 +95,7 @@ Transaction.init(
   {
     sequelize,
     modelName: "Transaction",
-
-    // TODO: What about outgoing transactions?
-    // They should have a status or smth.
     updatedAt: false, // A transaction is final.
-
     createdAt: "databaseCreatedAt",
   },
 );

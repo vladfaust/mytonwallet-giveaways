@@ -280,7 +280,7 @@ export class SyncBlockchain extends Job {
             return log(`TON transaction saved to DB.`);
           });
         } else if (from.equals(contract.address)) {
-          // TODO: Handle outgoing transactions.
+          // NOTE: Would handle outgoing transactions for accounting.
           await updateMeta(tonTransaction, undefined, log);
         }
       } else {
