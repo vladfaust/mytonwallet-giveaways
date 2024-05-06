@@ -45,6 +45,8 @@ const participantStatus = ref<
   | undefined
 >();
 const captchaToken = ref("");
+const walletConnectionInProgress = ref(false);
+const joinInProgress = ref(false);
 
 async function fetchGiveaway() {
   return await fetch(
@@ -62,6 +64,8 @@ async function connectWallet() {
   };
 
   unsubscribe = connector.onStatusChange(async (walletInfo) => {
+    walletConnectionInProgress.value = false;
+
     if (walletInfo) {
       if (!walletInfo.connectItems?.tonProof) {
         throw new Error("No proof provided");
@@ -102,6 +106,8 @@ async function connectWallet() {
     }
   });
 
+  walletConnectionInProgress.value = true;
+
   connector.connect(walletConnectionSource, {
     request: { tonProof: proofPayload },
   });
@@ -133,27 +139,35 @@ async function join() {
     return alert("Please complete the captcha.");
   }
 
-  await fetch(
-    import.meta.env.VITE_BACKEND_URL + "/giveaways/" + giveawayId + "/checkin",
-    {
-      method: "POST",
-      headers: {
-        Authorization: "Bearer " + jwt.value,
-        "Content-Type": "application/json",
+  joinInProgress.value = true;
+  try {
+    await fetch(
+      import.meta.env.VITE_BACKEND_URL +
+        "/giveaways/" +
+        giveawayId +
+        "/checkin",
+      {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + jwt.value,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          captchaToken: captchaToken.value,
+        }),
       },
-      body: JSON.stringify({
-        captchaToken: captchaToken.value,
-      }),
-    },
-  ).then(async (res) => {
-    if (!res.ok) {
-      const json = await res.json();
-      alert(json.error);
-      throw new Error(`Failed to check in: ${json.error}`);
-    }
+    ).then(async (res) => {
+      if (!res.ok) {
+        const json = await res.json();
+        alert(json.error);
+        throw new Error(`Failed to check in: ${json.error}`);
+      }
 
-    participantStatus.value = (await res.json()).participant.status;
-  });
+      participantStatus.value = (await res.json()).participant.status;
+    });
+  } finally {
+    joinInProgress.value = false;
+  }
 }
 
 watchImmediate(
@@ -227,6 +241,7 @@ onUnmounted(() => {
     template(v-else-if="giveaway?.status === 'active'")
       //- Step 1: Connect wallet.
       .flex.flex-col.items-center.gap-2
+        //- Step description.
         span(:class="{ 'line-through': wallet }")
           b Step 1:
           |
@@ -234,11 +249,21 @@ onUnmounted(() => {
           |
           a.dz-link(href="https://mytonwallet.io/") MyTonWallet
           CheckIcon.inline-block.text-success.ml-1(v-if="wallet" :size="20")
+
+        //- Button.
         button.dz-btn.dz-btn-primary.items-center.gap-1(
           @click="connectWallet"
           :disabled="!!wallet"
         )
-          span(v-if="wallet") Already connected!
+          //- When in-progress.
+          template(v-if="walletConnectionInProgress")
+            .dz-loading.dz-loading-spinner
+
+          //- When connected.
+          template(v-else-if="wallet")
+            | Already connected!
+
+          //- When not connected.
           template(v-else)
             PlugIcon.inline-block(:size="24")
             span Connect
@@ -251,6 +276,7 @@ onUnmounted(() => {
 
           //- When instant giveaway.
           span(v-if="giveaway.type === 'instant'") Claim your prize
+
           //- When lottery giveaway.
           span(v-else) Register to the lottery
 
@@ -269,10 +295,14 @@ onUnmounted(() => {
         //- Button.
         button.dz-btn.dz-btn-primary(
           @click="join"
-          :disabled="!captchaToken || !!participantStatus"
+          :disabled="!captchaToken || !!participantStatus || joinInProgress"
         )
+          //- When in progress.
+          template(v-if="joinInProgress")
+            .dz-loading.dz-loading-spinner
+
           //- When instant giveaway.
-          template(v-if="giveaway.type === 'instant'")
+          template(v-else-if="giveaway.type === 'instant'")
             span(v-if="participantStatus") Already claimed!
             template(v-else)
               FlameIcon.inline-block(:size="24")
@@ -310,7 +340,7 @@ onUnmounted(() => {
 
     template(v-else-if="giveaway?.status === 'pending'")
       p
-        .inline-block.animate-spin.mr-1 ⏳
+        .inline-block.mr-1 ⏳
         | This giveaway has not started yet.
 
     template(v-else-if="giveaway?.status === 'finished'")
