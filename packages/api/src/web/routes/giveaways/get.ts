@@ -32,15 +32,23 @@ export default Router().get("/giveaways/:giveawayId", async (req, res) => {
     zodTypedParse(SuccessResponseSchema, {
       id: giveaway.id,
       type: giveaway.type,
+
+      // NOTE: It may be such that the giveaways status
+      // is still "active", but the end date has passed.
+      // In that case, giveaway would deny further check-ins.
       status: giveaway.status,
       endsAt: giveaway.endsAt?.toString() ?? null,
+
       tokenAddress: giveaway.tokenAddress
         ? addressFromRawBuffer(giveaway.tokenAddress).toRawString()
         : null,
       amount: fromNano(giveaway.amount),
       receiverCount: giveaway.receiverCount,
       taskUrl: giveaway.taskUrl ?? null,
+
+      // NOTE: Does not include participants with "awaitingTask" status.
       participantCount: await countParticipants(giveaway.id),
+
       giveawayLink: GIVEAWAY_LINK_TEMPLATE.replace(":id", giveaway.id),
       topUpLink: buildTopUpLink(giveaway).toString(),
     }),

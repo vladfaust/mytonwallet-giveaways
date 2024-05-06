@@ -95,6 +95,8 @@ export default Router()
         return "Giveaway is not active";
       }
 
+      // It may be such that the giveaways status
+      // is still "active", but the end date has passed.
       if (giveaway.endsAt && giveaway.endsAt < new Date()) {
         return "Giveaway has ended";
       }
@@ -111,37 +113,44 @@ export default Router()
         return "Already checked in";
       }
 
-      participantCount = await countParticipants(giveaway.id, transaction);
-      if (participantCount === giveaway.receiverCount) {
-        return "Giveaway is full";
-      }
-
       let participantStatus: Participant["status"];
       if (giveaway.taskUrl) {
         // Waiting for the task completion.
         participantStatus = "awaitingTask";
-        // participantCount++; // We don't count those awaiting the task.
       } else if (giveaway.type === "instant") {
         // Ready for payout.
         participantStatus = "awaitingPayment";
-        participantCount++;
       } else {
         // Waiting for the lottery results.
         participantStatus = "awaitingLottery";
-        participantCount++;
       }
 
       participant = await Participant.create(
         {
           giveawayId: giveaway.id,
-
-          // NOTE: Raw address includes the workchain ID.
           receiverAddress: Address.parse(addressString).toRaw(),
-
           status: participantStatus,
         },
         { transaction },
       );
+
+      console.log(
+        `Created participant ${participant.id} with status ${participant.status}`,
+      );
+
+      participantCount = await countParticipants(giveaway.id, transaction);
+
+      // An instant giveaway without a task is complete
+      // once N participants check in.
+      if (giveaway.type === "instant" && !giveaway.taskUrl) {
+        if (participantCount === giveaway.receiverCount) {
+          await giveaway.update({ status: "finished" }, { transaction });
+
+          console.log(
+            `Updated giveaway ${giveaway.id} status to ${giveaway.status}`,
+          );
+        }
+      }
 
       return {
         giveaway,
@@ -161,8 +170,13 @@ export default Router()
         giveaway: {
           id: result.giveaway.id,
           type: result.giveaway.type,
+
+          // NOTE: It may be such that the giveaways status
+          // is still "active", but the end date has passed.
+          // In that case, giveaway would deny further check-ins.
           status: result.giveaway.status,
           endsAt: result.giveaway.endsAt?.toString() ?? null,
+
           tokenAddress: result.giveaway.tokenAddress
             ? addressFromRawBuffer(result.giveaway.tokenAddress).toString({
                 testOnly,
@@ -172,6 +186,8 @@ export default Router()
           amount: fromNano(result.giveaway.amount),
           receiverCount: result.giveaway.receiverCount,
           taskUrl: result.giveaway.taskUrl ?? null,
+
+          // NOTE: Does not include participants with "awaitingTask" status.
           participantCount,
         },
         participant: {

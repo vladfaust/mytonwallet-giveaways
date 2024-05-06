@@ -55,6 +55,12 @@ export default Router()
         return "Giveaway is not active";
       }
 
+      // It may be such that the giveaways status
+      // is still "active", but the end date has passed.
+      if (giveaway.endsAt && giveaway.endsAt < new Date()) {
+        return "Giveaway has ended";
+      }
+
       const participant = await Participant.findOne({
         where: {
           giveawayId: giveaway.id,
@@ -72,19 +78,6 @@ export default Router()
         return "Invalid participant status";
       }
 
-      const participantCount = await countParticipants(
-        giveaway.id,
-        transaction,
-      );
-
-      if (participantCount === giveaway.receiverCount) {
-        // NOTE: Technically, it's not a error, because the callback caller
-        // is not responsible in this case. It's just the participant
-        // being too slow on the task. But we're returning a error
-        // here so that the caller doesn't send any more updates.
-        return "The giveaway is full. No more participants are allowed.";
-      }
-
       await participant.update(
         {
           // If the giveaway is instant, the participant is ready to receive the prize.
@@ -94,6 +87,29 @@ export default Router()
         },
         { transaction },
       );
+
+      console.log(
+        `Updated participant ${participant.id} status to ${participant.status}`,
+      );
+
+      // An instant giveaway with a task is complete
+      // once N participants complete the task.
+      if (giveaway.type === "instant") {
+        const participantCount = await countParticipants(
+          giveaway.id,
+          transaction,
+        );
+
+        if (participantCount === giveaway.receiverCount) {
+          await giveaway.update({ status: "finished" }, { transaction });
+
+          console.log(
+            `Updated giveaway ${giveaway.id} status to ${giveaway.status}`,
+          );
+        }
+      } else {
+        // A lottery giveaway is only finished when the lottery is drawn.
+      }
     });
 
     if (error) {

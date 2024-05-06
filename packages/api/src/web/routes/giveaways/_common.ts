@@ -27,16 +27,33 @@ export function sendError(res: Response, statusCode: number, error: string) {
   );
 }
 
+/**
+ * Counts participants of a giveaway.
+ *
+ * @param transaction Database transaction, if any.
+ * @param includeAwaitingTask Whether to include participants with
+ * "awaitingTask" status, defaults to `false`.
+ */
 export async function countParticipants(
   giveawayId: string,
-  transaction?: Transaction,
+  transaction?: Transaction | undefined,
+  includeAwaitingTask = false,
 ) {
+  const status: Participant["status"][] = [
+    "awaitingLottery",
+    "awaitingPayment",
+    "paid",
+    "lost",
+  ];
+
+  if (includeAwaitingTask) {
+    status.push("awaitingTask");
+  }
+
   return Participant.count({
     where: {
       giveawayId,
-
-      // NOTE: Those with status "awaitingTask" are not counted.
-      status: ["awaitingLottery", "awaitingPayment", "paid", "lost"],
+      status,
     },
     transaction,
   });
