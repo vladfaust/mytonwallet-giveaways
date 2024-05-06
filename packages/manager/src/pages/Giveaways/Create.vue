@@ -117,9 +117,9 @@ async function submit() {
 </script>
 
 <template lang="pug">
-.flex.flex-col.items-center.gap-2.py-3(class="sm:px-3")
+.flex.flex-col.items-center.gap-2.py-3.w-full(class="sm:px-3")
   h1.text-2xl.font-bold.tracking-wider.uppercase.italic Create giveaway
-  form.grid.gap-y-3.gap-x-2.p-3.bg-base-200.rounded-xl.w-full.max-w-md(
+  form.grid.gap-y-3.gap-x-2.p-3.bg-base-200.rounded-xl.max-w-md.w-full.overflow-hidden(
     @submit.prevent="submit"
     style="grid-template-columns: minmax(min-content, 10rem) auto"
   )
@@ -154,7 +154,7 @@ async function submit() {
 
     //- Receiver count.
     CustomInput#receiverCount(
-      label="Max. participants"
+      label="Max. winners"
       :error="errors.receiverCount"
     )
       input#receiverCount.dz-input.dz-input-bordered(
@@ -166,9 +166,9 @@ async function submit() {
       )
 
     //- Amount.
-    CustomInput#amount(label="Amount per participant" :error="errors.amount")
+    CustomInput#amount(label="Prize per winner" :error="errors.amount")
       .dz-join
-        input#amount.dz-input.dz-input-bordered.dz-join-item(
+        input#amount.dz-input.dz-input-bordered.dz-join-item.w-full(
           type="number"
           min="0"
           step="any"
@@ -176,7 +176,7 @@ async function submit() {
           :class="{ 'dz-input-error': errors.amount }"
           placeholder="Token amount (e.g. 1.0)"
         )
-        .rounded-l-none.dz-input.dz-input-bordered.items-center.flex
+        .shrink-0.rounded-l-none.dz-input.dz-input-bordered.items-center.flex
           b(v-if="!jettonDataEvaluting") {{ jettonData?.metadata.metadata.symbol || "TON" }}
           .dz-loading.dz-loading-spinner.dz-loading-sm(v-else)
 
@@ -190,6 +190,7 @@ async function submit() {
         type="url"
         v-model="model.taskUrl"
         placeholder="http://example.com/task"
+        class="placeholder:opacity-50"
       )
 
     //- Secret.
