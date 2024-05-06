@@ -54,6 +54,7 @@ export default Router().get(
         }),
       );
     } else {
+      // NOTE: Should it be a non-error response instead?
       return sendError(res, 404, "Participant not found");
     }
   },
