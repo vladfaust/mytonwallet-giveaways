@@ -5,6 +5,7 @@ import { Address, fromNano } from "ton";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { JWT_SECRET } from "../../../env.js";
+import { verifyCaptcha } from "../../../lib/cloudflare.js";
 import { sequelize } from "../../../lib/sequelize.js";
 import { addressFromRawBuffer, testOnly } from "../../../lib/ton.js";
 import { zodTypedParse } from "../../../lib/utils.js";
@@ -18,7 +19,6 @@ import {
 import { GiveawaySchema } from "./get.js";
 
 const RequestBodySchema = z.object({
-  // TODO: Validate captcha.
   captchaToken: z.string(),
 });
 
@@ -46,6 +46,12 @@ export default Router()
     const body = RequestBodySchema.safeParse(req.body);
     if (!body.success) {
       return sendError(res, 400, fromZodError(body.error).toString());
+    }
+
+    const captchaVerifyResult = await verifyCaptcha(body.data.captchaToken);
+    if (!captchaVerifyResult.success) {
+      console.debug(captchaVerifyResult);
+      return sendError(res, 400, "Captcha verification failed");
     }
 
     const token = req.headers.authorization?.split("Bearer ")[1];

@@ -35,6 +35,8 @@ export const {
   GIVEAWAY_LINK_TEMPLATE,
   GIVEAWAY_SECRET,
 
+  TURNSTILE_SECRET_KEY,
+
   TONCONNECT_MANIFEST_URL,
   TONCONNECT_MANIFEST_ICON_URL,
 
@@ -69,6 +71,8 @@ export const {
 
     GIVEAWAY_LINK_TEMPLATE: z.string(),
     GIVEAWAY_SECRET: z.string(),
+
+    TURNSTILE_SECRET_KEY: z.string(),
 
     TONCONNECT_MANIFEST_URL: z.string().url(),
     TONCONNECT_MANIFEST_ICON_URL: z.string().url(),

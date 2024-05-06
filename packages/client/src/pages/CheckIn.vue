@@ -13,7 +13,9 @@ import { watchImmediate } from "@vueuse/core";
 import Countdown from "../components/Countdown.vue";
 import confetti from "canvas-confetti";
 import WrapBalancer from "vue-wrap-balancer";
+import Turnstile from "vue-turnstile";
 
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY;
 const JSBRIDGE_KEY = "mytonwallet";
 
 const { giveawayId } = defineProps<{ giveawayId: string }>();
@@ -42,6 +44,7 @@ const participantStatus = ref<
   | null
   | undefined
 >();
+const captchaToken = ref("");
 
 async function fetchGiveaway() {
   return await fetch(
@@ -126,6 +129,10 @@ async function checkJoined(jwt: string) {
 }
 
 async function join() {
+  if (!captchaToken.value) {
+    return alert("Please complete the captcha.");
+  }
+
   await fetch(
     import.meta.env.VITE_BACKEND_URL + "/giveaways/" + giveawayId + "/checkin",
     {
@@ -135,7 +142,7 @@ async function join() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        captchaToken: "42",
+        captchaToken: captchaToken.value,
       }),
     },
   ).then(async (res) => {
@@ -252,10 +259,17 @@ onUnmounted(() => {
             :size="20"
           )
 
+        //- Captcha.
+        .bg-base-300.p-2.rounded-lg.min-w-64.min-h-16.relative.grid.place-items-center(
+          v-if="!participantStatus"
+        )
+          .absolute.dz-loading-spinner.dz-loading
+          Turnstile.z-10(:site-key="TURNSTILE_SITE_KEY" v-model="captchaToken")
+
         //- Button.
         button.dz-btn.dz-btn-primary(
           @click="join"
-          :disabled="!!participantStatus"
+          :disabled="!captchaToken || !!participantStatus"
         )
           //- When instant giveaway.
           template(v-if="giveaway.type === 'instant'")
