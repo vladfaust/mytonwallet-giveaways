@@ -17,10 +17,11 @@ import { Transaction as AppTransaction } from "../models/transaction.js";
 
 /**
  * Synchronise TON blockchain state, querying the main wallet
- * for incoming and outgoing transations.
+ * for incoming (and outgoing) transations.
  *
  * NOTE: Only significant transactions are saved to DB, but meta data
- * is updated in DB each time to keep track of the blockchain state.
+ * is updated in DB each time to keep track of the blockchain state
+ * and reduce the number of requests to the TON client.
  *
  * SAFETY: Database is updated atomically, therefore
  * the job is both fail- and concurrent-safe.
@@ -71,6 +72,7 @@ export class SyncBlockchain extends Job {
       );
 
       if (!currentTonTransactions.length) {
+        // No more transactions to process.
         break fetchTransactionsLoop;
       }
 
@@ -141,6 +143,7 @@ export class SyncBlockchain extends Job {
           continue;
         }
 
+        // If it is an incoming transaction...
         if (to.equals(contract.address)) {
           const messageBody = parseTransactionMessageBody(body);
 
@@ -151,7 +154,7 @@ export class SyncBlockchain extends Job {
           }
 
           if (!messageBody.comment) {
-            log(`Incoming tx from ${from}, but no comment; skip.`);
+            log(`Incoming tx from ${from}, but there is no comment; skip.`);
             await updateMeta(tonTransaction);
             continue;
           }
@@ -165,6 +168,7 @@ export class SyncBlockchain extends Job {
 
           if (messageBody.jetton) {
             if (!(messageBody.jetton.from instanceof Address)) {
+              // It usually means it's a mint.
               log(`Got Jetton from undefined address, skip.`);
               await updateMeta(tonTransaction);
               continue;
@@ -305,6 +309,9 @@ export class SyncBlockchain extends Job {
   }
 }
 
+/**
+ * Fetch meta data from the database.
+ */
 async function fetchMeta(dbTransaction?: SequelizeTransaction): Promise<{
   latestProcessedTransaction: {
     lt: bigint;

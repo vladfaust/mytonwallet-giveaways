@@ -5,12 +5,16 @@ import { Giveaway } from "../models/giveaway.js";
 import { Participant } from "../models/participant.js";
 
 /**
+ * This job goes through all the lotteries that have ended, and
+ * selects the winners. The winners are then updated in the DB.
+ *
  * SAFETY: The job is safe to run concurrently.
  * Lotteries are processed one-by-one,
  * and the DB is updated atomically.
  */
 export class Lottery extends Job {
   static async perform(job: Lottery) {
+    // This function routes the logs to both the job and the console.
     function log(args: any) {
       job.log(args);
       console.log(args);
@@ -18,6 +22,7 @@ export class Lottery extends Job {
 
     let giveaway: Giveaway | null = null;
     do {
+      // Wrap the whole process in a transaction for atomicity.
       await sequelize.transaction(async (transaction) => {
         // Find the next active lottery that has (just) ended.
         giveaway = await Giveaway.findOne({
@@ -29,7 +34,7 @@ export class Lottery extends Job {
             },
           },
           transaction,
-          lock: true,
+          lock: true, // Lock for update.
         });
 
         if (!giveaway) {

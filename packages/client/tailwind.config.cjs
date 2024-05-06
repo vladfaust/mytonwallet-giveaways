@@ -2,9 +2,10 @@
 module.exports = {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx,vue}"],
   plugins: [
-    require("daisyui"),
+    require("daisyui"), // DaisyUI, the UI framework for Tailwind CSS!
     function ({ addUtilities, addVariant }) {
       addUtilities({
+        // .pressable to make a button look like it's being pressed.
         ".pressable:not(:disabled)": {
           "@apply active:scale-95": {},
         },

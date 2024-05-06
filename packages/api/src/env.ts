@@ -16,31 +16,32 @@ function booleanString() {
 }
 
 export const {
-  HOST,
-  PORT,
+  HOST, // HTTP server host.
+  PORT, // HTTP server port.
 
-  BULL_DASHBOARD_USERNAME,
-  BULL_DASHBOARD_PASSWORD,
+  BULL_DASHBOARD_USERNAME, // Basic auth username for the Bull dashboard.
+  BULL_DASHBOARD_PASSWORD, // Basic auth password for the Bull dashboard.
 
   DATABASE_URL,
   REDIS_URL,
 
-  TON_MAINNET,
-  TON_WORKCHAIN,
-  TON_CLIENT_ENDPOINT,
-  TON_CLIENT_API_KEY,
-  TON_MAIN_ADDRESS_MNEMONICS,
-  TON_HISTORY_CUTOFF,
+  TON_MAINNET, // Whether to use the mainnet or not (default: false).
+  TON_WORKCHAIN, // The TON workchain to use (default: 0).
+  TON_CLIENT_ENDPOINT, // The TON client endpoint.
+  TON_CLIENT_API_KEY, // The TON client API key.
+  TON_MAIN_ADDRESS_MNEMONICS, // The seed for the main TON wallet.
 
-  GIVEAWAY_LINK_TEMPLATE,
-  GIVEAWAY_SECRET,
+  TON_HISTORY_CUTOFF, // Before this date, the transactions are ignored.
 
-  TURNSTILE_SECRET_KEY,
+  GIVEAWAY_LINK_TEMPLATE, // The template for the giveaway link, e.g. `https://my.tt/g/:id`.
+  GIVEAWAY_SECRET, // The secret for the giveaway link, as defined by the specification.
 
-  TONCONNECT_MANIFEST_URL,
-  TONCONNECT_MANIFEST_ICON_URL,
+  TURNSTILE_SECRET_KEY, // Cloudflare's Turnstile secret key.
 
-  JWT_SECRET,
+  TONCONNECT_MANIFEST_URL, // The URL of the TON Connect manifest JSON file.
+  TONCONNECT_MANIFEST_ICON_URL, // The URL of the TON Connect manifest icon.
+
+  JWT_SECRET, // The secret key for JWT in hex format, e.g. `deadbeef`.
 } = z
   .object({
     HOST: z.string(),

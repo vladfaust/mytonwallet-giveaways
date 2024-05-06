@@ -9,8 +9,12 @@ import Home from "./pages/Home.vue";
 
 export type RouteName = "Home" | "CheckIn";
 
+/**
+ * This function is used for type-safe route locations.
+ * @example RouterLink(:to="routeLocation({ name: 'Home' })")
+ */
 export function routeLocation(
-  args: { name: "Home" } | { name: "CheckIn"; params: { giveawayId: string } }
+  args: { name: "Home" } | { name: "CheckIn"; params: { giveawayId: string } },
 ): RouteLocationNamedRaw & { name: RouteName } {
   return args;
 }

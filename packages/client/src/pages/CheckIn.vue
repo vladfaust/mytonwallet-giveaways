@@ -36,7 +36,7 @@ const giveaway = ref<
   | null
   | undefined
 >();
-let unsubscribe: (() => void) | undefined;
+
 const participantStatus = ref<
   | "awaitingTask"
   | "awaitingLottery" // NOTE: Out-of-spec.
@@ -46,6 +46,7 @@ const participantStatus = ref<
   | null
   | undefined
 >();
+
 const captchaToken = ref("");
 const walletConnectionInProgress = ref(false);
 const joinInProgress = ref(false);
@@ -66,18 +67,27 @@ const jettonData = asyncComputed(
   null,
   { evaluating: jettonDataEvaluating },
 );
+/** Returns Jetton symbol, or "TON". */
 const tokenSymbol = computed(() =>
   jettonDataEvaluating.value
     ? "…"
     : jettonData.value?.metadata.metadata.symbol ?? "TON",
 );
 
+let unsubscribeWalletConnector: (() => void) | undefined;
+
+/**
+ * Fetches the giveaway data from the backend.
+ */
 async function fetchGiveaway() {
   return await fetch(
     import.meta.env.VITE_BACKEND_URL + "/giveaways/" + giveawayId,
   ).then((res) => res.json());
 }
 
+/**
+ * Connects the TON wallet.
+ */
 async function connectWallet() {
   const proofPayload = await fetch(
     import.meta.env.VITE_BACKEND_URL + "/tonconnect/auth-payload",
@@ -87,7 +97,7 @@ async function connectWallet() {
     jsBridgeKey: JSBRIDGE_KEY,
   };
 
-  unsubscribe = connector.onStatusChange(async (walletInfo) => {
+  unsubscribeWalletConnector = connector.onStatusChange(async (walletInfo) => {
     walletConnectionInProgress.value = false;
 
     if (walletInfo) {
@@ -124,20 +134,28 @@ async function connectWallet() {
         },
       ).then((res) => res.json());
 
+      // Save the JWT locally.
       jwt.value = response.jwt;
 
-      unsubscribe?.();
+      // Remove the self as the listener once connected.
+      unsubscribeWalletConnector?.();
     }
   });
 
+  // For UI feedback.
   walletConnectionInProgress.value = true;
 
+  // Actually trigger the wallet connection.
   connector.connect(walletConnectionSource, {
     request: { tonProof: proofPayload },
   });
 }
 
+/**
+ * Check if the user has joined the giveaway.
+ */
 async function checkJoined(jwt: string) {
+  // TODO: Error handling.
   participantStatus.value = await fetch(
     import.meta.env.VITE_BACKEND_URL + "/giveaways/" + giveawayId + "/checkin",
     {
@@ -158,6 +176,9 @@ async function checkJoined(jwt: string) {
     });
 }
 
+/**
+ * Joins the giveaway!
+ */
 async function join() {
   if (!captchaToken.value) {
     return alert("Please complete the captcha.");
@@ -198,21 +219,26 @@ async function join() {
   }
 }
 
+// Watch the JWT storage for changes.
 watchImmediate(
   () => jwt.value,
   (jwt) => {
     if (!jwt) {
+      // If the JWT is removed, reset the participant status to none.
       participantStatus.value = null;
     } else {
+      // Otherwise, check if the user has joined the giveaway.
       checkJoined(jwt);
     }
   },
 );
 
+// Watch the participant status for changes.
 watchImmediate(
   () => participantStatus.value,
   (status) => {
     if (status === "awaitingPayment" || status === "paid") {
+      // If the user has won the prize, launch the confetti!
       launchConfetti();
     }
   },
@@ -233,11 +259,12 @@ function launchConfetti() {
 }
 
 onMounted(async () => {
+  // Fetch the giveaway data on mount.
   giveaway.value = await fetchGiveaway();
 });
 
 onUnmounted(() => {
-  unsubscribe?.();
+  unsubscribeWalletConnector?.();
 });
 </script>
 
@@ -392,6 +419,7 @@ onUnmounted(() => {
       br
       | Please wait for the payment to arrive into your wallet.
 
+//- The wallet connection status.
 .flex.gap-2.p-2.items-center.absolute.bottom-0.w-full.bg-base-200.justify-center(
   v-if="wallet"
 )

@@ -1,13 +1,39 @@
-# MyTonWallet Giveaways End-User Web Client
+# MyTonWallet Giveaways Web Client
+
+A end-user giveaways front-end application implementation for the MyTonWallet Giveaways contest, which took place from April 27 to May 7, 2024.
+See the [root README](../../README.md) for a broader picture.
 
 ## Technology Stack
 
-### VueJS
+The [specification](https://telegra.ph/MyTonWallet-Giveaways-En-04-27) states that one shall use HTML, JS and CSS to create the web applications.
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+Well, creating an application in pure HTML+JS+CSS would take ages, therefore I've opted into using the following libraries (which I have a decent experience with):
 
-#### Recommended Setup
+- [VueJS](https://vuejs.org/), version 3, as the general framework for the application; I've included some ready-to-use Vue components as well.
+- [Pug](https://pugjs.org/api/getting-started.html) for rapid HTML templating.
+- [Tailwind](https://tailwindcss.com/) and [SCSS](https://sass-lang.com/) for _extremely_ fast styling.
+- [DaisyUI](https://daisyui.com/) is a great Tailwind framework that provides a lot of ready-to-use responsive, accessible components out of the box.
+- [Lucide Icons](https://lucide.dev/) allow to achive a consistent look and feel across the application.
 
-- [VS Code](https://code.visualstudio.com/) + [Vue - Official](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (previously Volar) and disable Vetur
+Other libraries used are:
 
-- Use [vue-tsc](https://github.com/vuejs/language-tools/tree/master/packages/tsc) for performing the same type checking from the command line, or for generating d.ts files for SFCs.
+- [@tonconnect](https://www.npmjs.com/package/@tonconnect/sdk) is used to interact with TON wallets.
+- [vueuse](https://vueuse.org/) is a collection of essential Vue Composition Utilities.
+- [canvas-confetti](https://npmjs.com/package/canvas-confetti) is used as an eye candy for the giveaway completion.
+
+For local development, I'm using [Vite](https://vitejs.dev/), TypeScript and [prettier](https://prettier.io/).
+
+## Local development
+
+This package uses Vite as the development server, making the development process as straightforward as:
+
+```sh
+# Install the dependencies.
+npm install
+
+# Run the local development server.
+npm run dev
+
+# Build the package for distribution, creating a `dist` directory.
+npm run build
+```

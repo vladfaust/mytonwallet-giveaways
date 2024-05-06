@@ -135,7 +135,6 @@ async function wrapTransfer(
   messages: MessageRelaxed[],
   log = console.log,
 ) {
-  // Wrap the transfer in a transaction to ensure integrity.
   return sequelize.transaction(async (transaction) => {
     const participant = await Participant.findByPk(participantId, {
       include: [{ model: Giveaway }],

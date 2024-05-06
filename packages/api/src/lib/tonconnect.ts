@@ -17,6 +17,9 @@ interface Message {
   payload: string;
 }
 
+/**
+ * Verifies the signature of a message.
+ */
 export async function verifySignature(
   pubkey: Buffer,
   message: Message,
