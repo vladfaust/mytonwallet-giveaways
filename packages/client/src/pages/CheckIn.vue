@@ -9,11 +9,12 @@ import { type WalletConnectionSource } from "@tonconnect/sdk";
 import { jwt } from "../store";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { CheckIcon, FlameIcon, PlugIcon, UserPlus2Icon } from "lucide-vue-next";
-import { watchImmediate } from "@vueuse/core";
+import { asyncComputed, watchImmediate } from "@vueuse/core";
 import Countdown from "../components/Countdown.vue";
 import confetti from "canvas-confetti";
 import WrapBalancer from "vue-wrap-balancer";
 import Turnstile from "vue-turnstile";
+import { getJettonData } from "../lib/api";
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY;
 const JSBRIDGE_KEY = "mytonwallet";
@@ -30,6 +31,7 @@ const giveaway = ref<
       receiverCount: number;
       participantCount: number;
       giveawayLink: string;
+      tokenAddress: string | null;
     }
   | null
   | undefined
@@ -53,6 +55,21 @@ const isGiveawayActive = computed(
   () =>
     giveaway.value?.status === "active" &&
     (!giveaway.value.endsAt || new Date(giveaway.value.endsAt) > new Date()),
+);
+
+const jettonDataEvaluating = ref(false);
+const jettonData = asyncComputed(
+  () =>
+    giveaway.value?.tokenAddress
+      ? getJettonData(giveaway.value.tokenAddress)
+      : null,
+  null,
+  { evaluating: jettonDataEvaluating },
+);
+const tokenSymbol = computed(() =>
+  jettonDataEvaluating.value
+    ? "…"
+    : jettonData.value?.metadata.metadata.symbol ?? "TON",
 );
 
 async function fetchGiveaway() {
@@ -236,8 +253,7 @@ onUnmounted(() => {
       .flex.p-3.gap-2.items-center.bg-base-200.rounded-xl.max-w-sm.w-full.flex-col
         span
           span Prize pool:&nbsp;
-          //- TODO: Jettons.
-          b.text-accent {{ parseFloat(giveaway.amount) * giveaway.receiverCount }} TON
+          b.text-accent {{ parseFloat(giveaway.amount) * giveaway.receiverCount }} {{ tokenSymbol }}
         span
           span Maximum winners:&nbsp;
           b {{ giveaway.receiverCount }}
