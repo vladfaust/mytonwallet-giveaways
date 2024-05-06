@@ -7,7 +7,7 @@ import {
 } from "../lib/ton";
 import { type WalletConnectionSource } from "@tonconnect/sdk";
 import { jwt } from "../store";
-import { onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { CheckIcon, FlameIcon, PlugIcon, UserPlus2Icon } from "lucide-vue-next";
 import { watchImmediate } from "@vueuse/core";
 import Countdown from "../components/Countdown.vue";
@@ -47,6 +47,13 @@ const participantStatus = ref<
 const captchaToken = ref("");
 const walletConnectionInProgress = ref(false);
 const joinInProgress = ref(false);
+
+// ADHOC: Ideally, the giveaway's status is updated as soon as it ends.
+const isGiveawayActive = computed(
+  () =>
+    giveaway.value?.status === "active" &&
+    (!giveaway.value.endsAt || new Date(giveaway.value.endsAt) > new Date()),
+);
 
 async function fetchGiveaway() {
   return await fetch(
@@ -139,6 +146,10 @@ async function join() {
     return alert("Please complete the captcha.");
   }
 
+  if (!isGiveawayActive.value) {
+    return alert("This giveaway has ended.");
+  }
+
   joinInProgress.value = true;
   try {
     await fetch(
@@ -225,20 +236,21 @@ onUnmounted(() => {
       .flex.p-3.gap-2.items-center.bg-base-200.rounded-xl.max-w-sm.w-full.flex-col
         span
           span Prize pool:&nbsp;
+          //- TODO: Jettons.
           b.text-accent {{ parseFloat(giveaway.amount) * giveaway.receiverCount }} TON
         span
           span Maximum winners:&nbsp;
           b {{ giveaway.receiverCount }}
 
     Countdown.gap-2(
-      v-if="giveaway?.endsAt && giveaway.status === 'active' && new Date(giveaway.endsAt) > new Date()"
+      v-if="giveaway?.endsAt"
       :endsAt="new Date(giveaway.endsAt)"
     )
 
     template(v-if="restoringConnection || giveaway === undefined")
       span.dz-loading.dz-loading-spinner.dz-loading-lg
 
-    template(v-else-if="giveaway?.status === 'active'")
+    template(v-else-if="giveaway && isGiveawayActive")
       //- Step 1: Connect wallet.
       .flex.flex-col.items-center.gap-2
         //- Step description.
@@ -348,7 +360,7 @@ onUnmounted(() => {
         .inline-block.mr-1 ⏳
         | This giveaway has not started yet.
 
-    template(v-else-if="giveaway?.status === 'finished'")
+    template(v-else-if="giveaway && !isGiveawayActive")
       p.text-lg.text-accent.font-bold
         | This giveaway has ended. 🏁
 

@@ -80,6 +80,13 @@ const tokenSymbol = computed(() =>
     : jettonData.value?.metadata.metadata.symbol ?? "TON",
 );
 
+// ADHOC: Ideally, the giveaway's status is updated as soon as it ends.
+const isGiveawayActive = computed(
+  () =>
+    giveaway.value?.status === "active" &&
+    (!giveaway.value.endsAt || new Date(giveaway.value.endsAt) > new Date()),
+);
+
 onMounted(async () => {
   giveaway.value = await fetch(
     import.meta.env.VITE_API_URL + `/giveaways/${props.giveawayId}`,
@@ -126,7 +133,7 @@ onMounted(async () => {
         //- Status.
         .attribute-wrapper
           span.attribute-label Status
-          span(v-if="giveaway.status === 'active'") ✅ Active
+          span(v-if="isGiveawayActive") ✅ Active
 
           //- For "pending" status, show QR code and payment link.
           .flex.flex-col.gap-3.items-center(

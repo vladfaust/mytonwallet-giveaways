@@ -149,7 +149,7 @@ export default Router()
       // An instant giveaway without a task is complete
       // once N participants check in.
       if (giveaway.type === "instant" && !giveaway.taskUrl) {
-        if (participantCount === giveaway.receiverCount) {
+        if (participantCount >= giveaway.receiverCount) {
           await giveaway.update({ status: "finished" }, { transaction });
 
           console.log(

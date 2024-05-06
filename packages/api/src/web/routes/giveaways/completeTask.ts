@@ -100,7 +100,7 @@ export default Router()
           transaction,
         );
 
-        if (participantCount === giveaway.receiverCount) {
+        if (participantCount >= giveaway.receiverCount) {
           await giveaway.update({ status: "finished" }, { transaction });
 
           console.log(
