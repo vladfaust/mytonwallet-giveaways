@@ -1,7 +1,9 @@
 import { Sequelize } from "sequelize";
 import { DATABASE_URL } from "../env.js";
 
-export const sequelize = new Sequelize(DATABASE_URL);
+export const sequelize = new Sequelize(DATABASE_URL, {
+  logging: false,
+});
 
 sequelize.authenticate().then(async () => {
   console.log("Sequelize connection OK");

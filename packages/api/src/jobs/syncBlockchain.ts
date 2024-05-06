@@ -339,14 +339,7 @@ async function updateMeta(
       meta.latestTransaction.hash.length &&
       !meta.latestTransaction.hash.equals(prevTransactionHashBuffer)
     ) {
-      console.log({
-        metaLatestTxHash: meta.latestTransaction.hash,
-        txHash: tonTransaction.hash(),
-        txParentHash: prevTransactionHashBuffer,
-      });
-
       log(`Parent TON transaction data mismatch, skip meta update.`);
-
       if (!dbTransactionArg) await dbTransaction.rollback();
       return false;
     }
