@@ -88,7 +88,11 @@ export class SyncBlockchain extends Job {
         }
 
         // Check if the transaction is already processed.
-        if (currentTonTransaction.hash().equals(meta.latestTransaction.hash)) {
+        if (
+          currentTonTransaction
+            .hash()
+            .equals(meta.latestProcessedTransaction.hash)
+        ) {
           log(
             `Reached an already processed TON transaction ${currentTonTransaction.hash().toString("hex")}, stop fetching.`,
           );
@@ -133,11 +137,7 @@ export class SyncBlockchain extends Job {
 
         if (bounced) {
           log(`TON transaction bounced, skip.`);
-
-          // Would still update the meta data to avoid
-          // processing the same transaction twice.
-          await updateMeta(tonTransaction, undefined, log);
-
+          await updateMeta(tonTransaction);
           continue;
         }
 
@@ -146,13 +146,13 @@ export class SyncBlockchain extends Job {
 
           if (messageBody instanceof Buffer) {
             log(`Incoming tx from ${from}, but the body is unknown; skip.`);
-            await updateMeta(tonTransaction, undefined, log); // Ditto.
+            await updateMeta(tonTransaction);
             continue;
           }
 
           if (!messageBody.comment) {
             log(`Incoming tx from ${from}, but no comment; skip.`);
-            await updateMeta(tonTransaction, undefined, log); // Ditto.
+            await updateMeta(tonTransaction);
             continue;
           }
 
@@ -165,8 +165,8 @@ export class SyncBlockchain extends Job {
 
           if (messageBody.jetton) {
             if (!(messageBody.jetton.from instanceof Address)) {
-              log(`Got Jetton from unknown address, skip.`);
-              await updateMeta(tonTransaction, undefined, log); // Ditto.
+              log(`Got Jetton from undefined address, skip.`);
+              await updateMeta(tonTransaction);
               continue;
             }
 
@@ -175,7 +175,7 @@ export class SyncBlockchain extends Job {
               jettonMasterAddress = await getJettonMasterAddress(from);
             } catch (e: any) {
               log(`Failed to get Jetton master address: ${e.message}, skip.`);
-              await updateMeta(tonTransaction, undefined, log); // Ditto.
+              await updateMeta(tonTransaction);
               continue;
             }
 
@@ -196,7 +196,18 @@ export class SyncBlockchain extends Job {
           }
 
           await sequelize.transaction(async (dbTransaction) => {
-            if (!(await updateMeta(tonTransaction, dbTransaction, log))) {
+            const existingTransaction = await AppTransaction.findOne({
+              where: { hash: tonTransaction.hash() },
+              transaction: dbTransaction,
+            });
+
+            if (existingTransaction) {
+              return log(
+                `TON transaction ${tonTransaction.hash().toString("hex")} already exists, skip.`,
+              );
+            }
+
+            if (!(await updateMeta(tonTransaction, dbTransaction))) {
               return log(`Meta update error, skip.`);
             }
 
@@ -281,33 +292,45 @@ export class SyncBlockchain extends Job {
           });
         } else if (from.equals(contract.address)) {
           // NOTE: Would handle outgoing transactions for accounting.
-          await updateMeta(tonTransaction, undefined, log);
+          await updateMeta(tonTransaction);
         }
       } else {
         log(
           `Unhandled message type: ${tonTransaction.inMessage?.info.type}, skip.`,
         );
 
-        await updateMeta(tonTransaction, undefined, log); // Ditto.
+        await updateMeta(tonTransaction); // Ditto.
       }
     }
   }
 }
 
 async function fetchMeta(dbTransaction?: SequelizeTransaction): Promise<{
-  latestTransaction: {
+  latestProcessedTransaction: {
+    lt: bigint;
     hash: Buffer;
   };
 }> {
-  const parentHash = await Meta.findOne({
-    where: { key: "latestProcessedTransactionHash" satisfies MetaKey },
-    transaction: dbTransaction,
-    attributes: ["value"],
-  }).then((meta) => meta?.value || "");
+  const [
+    latestProcessedTransactionHash,
+    latestProcessedTransactionLogicalTime,
+  ] = await Promise.all([
+    Meta.findOne({
+      where: { key: "latestProcessedTransactionHash" satisfies MetaKey },
+      transaction: dbTransaction,
+      attributes: ["value"],
+    }).then((meta) => meta?.value ?? ""),
+    Meta.findOne({
+      where: { key: "latestProcessedTransactionLogicalTime" satisfies MetaKey },
+      transaction: dbTransaction,
+      attributes: ["value"],
+    }).then((meta) => meta?.value ?? "0"),
+  ]);
 
   return {
-    latestTransaction: {
-      hash: Buffer.from(parentHash, "hex"),
+    latestProcessedTransaction: {
+      lt: BigInt(latestProcessedTransactionLogicalTime),
+      hash: Buffer.from(latestProcessedTransactionHash, "hex"),
     },
   };
 }
@@ -322,24 +345,18 @@ async function fetchMeta(dbTransaction?: SequelizeTransaction): Promise<{
  */
 async function updateMeta(
   tonTransaction: TonTransaction,
-  dbTransactionArg: SequelizeTransaction | undefined,
-  log = console.log,
+  dbTransactionArg?: SequelizeTransaction | undefined,
 ): Promise<boolean> {
   const dbTransaction = dbTransactionArg || (await sequelize.transaction());
 
   try {
     const meta = await fetchMeta(dbTransaction);
 
-    const prevTransactionHashBuffer = Buffer.from(
-      tonTransaction.prevTransactionHash.toString(16),
-      "hex",
-    );
-
     if (
-      meta.latestTransaction.hash.length &&
-      !meta.latestTransaction.hash.equals(prevTransactionHashBuffer)
+      meta.latestProcessedTransaction.lt &&
+      meta.latestProcessedTransaction.lt >= tonTransaction.lt
     ) {
-      log(`Parent TON transaction data mismatch, skip meta update.`);
+      console.warn(`Parent TON transaction is earlier than expected, skip.`);
       if (!dbTransactionArg) await dbTransaction.rollback();
       return false;
     }
@@ -355,12 +372,24 @@ async function updateMeta(
       },
     );
 
+    await Meta.upsert(
+      {
+        key: "latestProcessedTransactionLogicalTime" satisfies MetaKey,
+        value: tonTransaction.lt.toString(),
+      },
+      {
+        conflictFields: ["key"],
+        transaction: dbTransaction,
+      },
+    );
+
     if (!dbTransactionArg) {
       await dbTransaction.commit();
     }
 
     console.log("Updated meta", {
       latestProcessedTransactionHash: tonTransaction.hash().toString("hex"),
+      latestProcessedTransactionLogicalTime: tonTransaction.lt.toString(),
     } satisfies Record<MetaKey, string>);
 
     return true;
