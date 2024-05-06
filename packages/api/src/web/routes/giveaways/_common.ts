@@ -68,10 +68,10 @@ export function buildTopUpLink(giveaway: Giveaway): URL {
   );
 
   if (giveaway.tokenAddress) {
+    // @see https://github.com/tonkeeper/wallet-api.
     topUpLink.searchParams.set(
-      "token",
+      "jetton",
       addressFromRawBuffer(giveaway.tokenAddress).toString({
-        urlSafe: true,
         testOnly,
         bounceable: true,
       }),
