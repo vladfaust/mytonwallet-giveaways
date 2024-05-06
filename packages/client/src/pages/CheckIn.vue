@@ -275,7 +275,9 @@ onUnmounted(() => {
           b Step 2:&nbsp;
 
           //- When instant giveaway.
-          span(v-if="giveaway.type === 'instant'") Claim your prize
+          template(v-if="giveaway.type === 'instant'")
+            span(v-if="giveaway.taskUrl") Register to the giveaway
+            span(v-else) Claim your prize
 
           //- When lottery giveaway.
           span(v-else) Register to the lottery
@@ -304,6 +306,9 @@ onUnmounted(() => {
           //- When instant giveaway.
           template(v-else-if="giveaway.type === 'instant'")
             span(v-if="participantStatus") Already claimed!
+            template(v-else-if="giveaway.taskUrl")
+              UserPlus2Icon.inline-block(:size="24")
+              span Register
             template(v-else)
               FlameIcon.inline-block(:size="24")
               span Claim
@@ -325,7 +330,7 @@ onUnmounted(() => {
           b Step 3:&nbsp;
           | Complete the task
           CheckIcon.inline-block.text-success.ml-1(
-            v-if="participantStatus"
+            v-if="participantStatus !== 'awaitingTask'"
             :size="20"
           )
         a.pressable.transition-transform.text-primary.bg-base-300.px-4.py-3.rounded-lg.dz-link-hover.font-mono(
@@ -353,11 +358,11 @@ onUnmounted(() => {
 
     //- Explanation text.
     p.text-secondary.leading-snug.text-center(
-      v-if="(participantStatus === 'awaitingPayment' || participantStatus === 'paid') && giveaway?.type === 'instant'"
+      v-if="participantStatus === 'awaitingPayment' || participantStatus === 'paid'"
     )
-      b.text-lg You have claimed the prize! 🎉
+      b.text-lg You have won the prize! 🎉
       br
-      | Please wait for the payment of {{ giveaway.amount }} TON to your wallet.
+      | Please wait for the payment to arrive into your wallet.
 
 .flex.gap-2.p-2.items-center.absolute.bottom-0.w-full.bg-base-200.justify-center(
   v-if="wallet"
