@@ -12,6 +12,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tonconnect/sdk": "^3.0.2",
     "@vueuse/core": "^10.9.0",
     "dexie": "^4.0.4",
     "qrcode": "^1.5.3",
