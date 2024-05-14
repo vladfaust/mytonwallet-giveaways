@@ -1,4 +1,5 @@
 import { Worker } from "bullmq";
+import { JOB_LOTTERY_CRON, JOB_PAYOUT_CRON, JOB_SYNC_CRON } from "./env.js";
 import { Lottery } from "./jobs/lottery.js";
 import { Payout } from "./jobs/payout.js";
 import { SyncBlockchain } from "./jobs/syncBlockchain.js";
@@ -26,35 +27,35 @@ new Worker(
   },
 );
 
-// Repeat `SyncBlockchain` every 5 minutes.
+console.log(`Setting SyncBlockchain cron to ${JOB_SYNC_CRON}`);
 await DefaultQueue.add(
   SyncBlockchain.name,
   {},
   {
     repeat: {
-      pattern: "0 */5 * * * *",
+      pattern: JOB_SYNC_CRON,
     },
   },
 );
 
-// Repeat `Payout` every 5 minutes.
+console.log(`Setting Payout cron to ${JOB_PAYOUT_CRON}`);
 await DefaultQueue.add(
   Payout.name,
   {},
   {
     repeat: {
-      pattern: "0 */5 * * * *",
+      pattern: JOB_PAYOUT_CRON,
     },
   },
 );
 
-// Repeat `Lottery` every 5 minutes.
+console.log(`Setting Lottery cron to ${JOB_LOTTERY_CRON}`);
 await DefaultQueue.add(
   Lottery.name,
   {},
   {
     repeat: {
-      pattern: "0 */5 * * * *",
+      pattern: JOB_LOTTERY_CRON,
     },
   },
 );

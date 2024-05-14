@@ -24,6 +24,10 @@ export const {
   BULL_DASHBOARD_USERNAME, // Basic auth username for the Bull dashboard.
   BULL_DASHBOARD_PASSWORD, // Basic auth password for the Bull dashboard.
 
+  JOB_SYNC_CRON,
+  JOB_PAYOUT_CRON,
+  JOB_LOTTERY_CRON,
+
   DATABASE_URL,
   REDIS_URL,
 
@@ -62,6 +66,11 @@ export const {
 
     BULL_DASHBOARD_USERNAME: z.string(),
     BULL_DASHBOARD_PASSWORD: z.string(),
+
+    // Default to 5 minutes.
+    JOB_SYNC_CRON: z.string().optional().default("0 */5 * * * *"),
+    JOB_PAYOUT_CRON: z.string().optional().default("0 */5 * * * *"),
+    JOB_LOTTERY_CRON: z.string().optional().default("0 */5 * * * *"),
 
     TON_MAINNET: booleanString().optional().default("false"),
     TON_WORKCHAIN: z
