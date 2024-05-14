@@ -32,3 +32,31 @@ npm run dev
 # Build the package for distribution, creating a `dist` directory.
 npm run build
 ```
+
+## Dokku deployment
+
+Commands to run on a [dokku](https://dokku.com/) server:
+
+```sh
+# Create a Dokku application.
+dokku create gw-manager
+
+# Set the build path (it's a monorepo).
+dokku builder:set gw-manager build-dir packages/manager
+
+# These are dokku-specific variables (see
+# https://github.com/dokku/heroku-buildpack-nginx).
+dokku config:set gw-manager \
+  NGINX_ROOT=dist \
+  NGINX_DEFAULT_REQUEST=index.html
+
+# See .env.example for the list of required environment variables.
+dokku config:set gw-manager VITE_API_URL=https://api.example.com
+```
+
+Then locally:
+
+```sh
+git remote add dokku-manager dokku@host:gw-manager
+git push dokku-manager
+```
