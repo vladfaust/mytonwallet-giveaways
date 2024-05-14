@@ -61,3 +61,38 @@ The following are development-local libraries which I'm comfortable with:
 ## Local development
 
 After running `npm install`, use the convenient `npm run dev` and `npm run build` commands to run the development server and build the package for distribution, respectively.
+
+## Dokku deployment
+
+Commands to run on a [dokku](https://dokku.com/) server:
+
+```sh
+# Install Dokku PostgreSQL plugin.
+dokku plugin:install https://github.com/dokku/dokku-postgres.git postgres
+dokku postgres:create gw
+dokku postgres:link gw gw-api
+
+# Install Dokku Redis plugin.
+dokku plugin:install https://github.com/dokku/dokku-redis.git redis
+dokku redis:create gw
+dokku redis:link gw gw-api
+
+# Create a Dokku application.
+dokku create gw-api
+
+# Set the builder path (it's a monorepo).
+dokku builder:set gw-api build-dir packages/api
+
+# See `.env.example` for the list of environment variables.
+dokku config:set gw-api HOST=0.0.0.0 PORT=5000 ...
+
+# Enable worker process.
+dokku ps:scale gw-api worker=1
+```
+
+Then locally:
+
+```sh
+git remote add dokku-api dokku@host:gw-api
+git push dokku-api
+```
