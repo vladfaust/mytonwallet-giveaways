@@ -16,6 +16,8 @@ function booleanString() {
 }
 
 export const {
+  NODE_ENV,
+
   HOST, // HTTP server host.
   PORT, // HTTP server port.
 
@@ -44,6 +46,11 @@ export const {
   JWT_SECRET, // The secret key for JWT in hex format, e.g. `deadbeef`.
 } = z
   .object({
+    NODE_ENV: z
+      .enum(["development", "production", "test"])
+      .optional()
+      .default("development"),
+
     HOST: z.string(),
     PORT: z
       .string()

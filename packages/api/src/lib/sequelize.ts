@@ -1,5 +1,5 @@
 import { Sequelize } from "sequelize";
-import { DATABASE_URL } from "../env.js";
+import { DATABASE_URL, NODE_ENV } from "../env.js";
 
 export const sequelize = new Sequelize(DATABASE_URL, {
   logging: false,
@@ -7,7 +7,12 @@ export const sequelize = new Sequelize(DATABASE_URL, {
 
 sequelize.authenticate().then(async () => {
   console.log("Sequelize connection OK");
+
   // TODO: Replace sync with migrations.
-  await sequelize.sync({ force: false, match: /_test$/ });
+  await sequelize.sync({
+    force: false,
+    match: NODE_ENV === "production" ? undefined : /_test$/,
+  });
+
   console.log("Sequelize sync OK");
 });
