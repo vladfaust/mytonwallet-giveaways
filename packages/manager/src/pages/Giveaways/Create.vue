@@ -14,7 +14,7 @@ const model = ref<{
   type: "instant" | "lottery";
   endsAt: string | null;
   tokenAddress: string | null;
-  amount: number;
+  amount: number; // In tokens (e.g. 1.0 TON will become 1_000_000_000 TON).
   receiverCount: number;
   taskUrl: string | null;
   secret: string;
@@ -79,7 +79,25 @@ const isValid = computed(() => {
 });
 
 async function submit() {
-  if (!isValid.value) return;
+  if (!isValid.value) {
+    throw new Error("Form is invalid");
+  }
+
+  if (jettonDataEvaluting.value) {
+    throw new Error("Jetton data is still loading");
+  }
+
+  let bigintAmount: bigint;
+  if (jettonData.value) {
+    // Convert amount to BigInt in the token's smallest unit.
+    bigintAmount = BigInt(
+      model.value.amount *
+        10 ** Number(jettonData.value.metadata.metadata.decimals),
+    );
+  } else {
+    // Nano is default for TON.
+    bigintAmount = BigInt(model.value.amount * 1_000_000_000);
+  }
 
   const { id, taskToken } = await fetch(
     import.meta.env.VITE_API_URL + "/giveaways",
@@ -95,7 +113,7 @@ async function submit() {
             ? new Date(model.value.endsAt).toISOString()
             : null,
           tokenAddress: model.value.tokenAddress ?? null,
-          amount: model.value.amount.toString(),
+          amount: bigintAmount.toString(),
           receiverCount: model.value.receiverCount,
           taskUrl: model.value.taskUrl || null,
         },
@@ -174,7 +192,7 @@ async function submit() {
           step="any"
           v-model="model.amount"
           :class="{ 'dz-input-error': errors.amount }"
-          placeholder="Token amount (e.g. 1.0)"
+          placeholder="Decimal token amount (e.g. 1.0)"
         )
         .shrink-0.rounded-l-none.dz-input.dz-input-bordered.items-center.flex
           b(v-if="!jettonDataEvaluting") {{ jettonData?.metadata.metadata.symbol || "TON" }}

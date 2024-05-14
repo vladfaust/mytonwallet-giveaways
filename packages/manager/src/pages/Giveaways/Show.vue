@@ -16,7 +16,7 @@ type Giveaway = {
   type: "instant" | "lottery";
   endsAt: Date | null;
   tokenAddress: string | null;
-  amount: number;
+  amount: string; // BigInt string.
   receiverCount: number;
   taskUrl: string | null;
   status: "pending" | "active" | "finished";
@@ -79,6 +79,25 @@ const tokenSymbol = computed(() =>
     ? "…"
     : jettonData.value?.metadata.metadata.symbol ?? "TON",
 );
+const tokenDecimals = computed<number | undefined>(
+  () =>
+    jettonDataEvaluating.value
+      ? undefined
+      : jettonData.value
+        ? Number(jettonData.value.metadata.metadata.decimals)
+        : 9, // Nano is default for TON.
+);
+function formatAmount(amount: BigInt) {
+  if (tokenDecimals.value === undefined) {
+    return "…"; // Decimals not loaded yet.
+  } else if (!tokenDecimals.value) {
+    return amount.toString(); // No decimals.
+  } else {
+    return parseFloat(
+      (Number(amount) / 10 ** tokenDecimals.value).toFixed(tokenDecimals.value),
+    );
+  }
+}
 
 // ADHOC: Ideally, the giveaway's status is updated as soon as it ends.
 const isGiveawayActive = computed(
@@ -145,7 +164,7 @@ onMounted(async () => {
             img.rounded-lg(:src="topUpQrCodeDataUrl")
             a.dz-btn.dz-btn-primary.w-max(:href="giveaway.topUpLink")
               CurrencyIcon(:size="20")
-              | Pay {{ giveaway.amount * giveaway.receiverCount }}
+              | Pay {{ formatAmount(BigInt(giveaway.amount) * BigInt(giveaway.receiverCount)) }}
               |
               span.dz-loading.dz-loading-spinner.dz-loading-sm(
                 v-if="jettonDataEvaluating"
@@ -229,8 +248,8 @@ onMounted(async () => {
         //- Prize.
         .attribute-wrapper
           span.attribute-label Prize
-          span.leading-snug.text-lg {{ giveaway.amount * giveaway.receiverCount }} {{ tokenSymbol }} total
-          span.leading-snug {{ giveaway.amount }} {{ tokenSymbol }} per participant
+          span.leading-snug.text-lg {{ formatAmount(BigInt(giveaway.amount) * BigInt(giveaway.receiverCount)) }} {{ tokenSymbol }} total
+          span.leading-snug {{ formatAmount(BigInt(giveaway.amount)) }} {{ tokenSymbol }} per participant
 
         //- Participants.
         .attribute-wrapper

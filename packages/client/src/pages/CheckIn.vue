@@ -27,7 +27,7 @@ const giveaway = ref<
       status: "pending" | "active" | "finished";
       endsAt: string | null;
       taskUrl: string | null;
-      amount: string;
+      amount: string; // BigInt string.
       receiverCount: number;
       participantCount: number;
       giveawayLink: string;
@@ -73,6 +73,26 @@ const tokenSymbol = computed(() =>
     ? "…"
     : jettonData.value?.metadata.metadata.symbol ?? "TON",
 );
+/** Returns token decimals, or `undefined` if not loaded yet. */
+const tokenDecimals = computed<number | undefined>(
+  () =>
+    jettonDataEvaluating.value
+      ? undefined
+      : jettonData.value
+        ? Number(jettonData.value.metadata.metadata.decimals)
+        : 9, // Nano for TON.
+);
+function formatAmount(amount: BigInt) {
+  if (tokenDecimals.value === undefined) {
+    return "…"; // Decimals not loaded yet.
+  } else if (!tokenDecimals.value) {
+    return amount.toString(); // No decimals.
+  } else {
+    return parseFloat(
+      (Number(amount) / 10 ** tokenDecimals.value).toFixed(tokenDecimals.value),
+    );
+  }
+}
 
 let unsubscribeWalletConnector: (() => void) | undefined;
 
@@ -280,7 +300,7 @@ onUnmounted(() => {
       .flex.p-3.gap-2.items-center.bg-base-200.rounded-xl.max-w-sm.w-full.flex-col
         span
           span Prize pool:&nbsp;
-          b.text-accent {{ parseFloat(giveaway.amount) * giveaway.receiverCount }} {{ tokenSymbol }}
+          b.text-accent {{ formatAmount(BigInt(giveaway.amount) * BigInt(giveaway.receiverCount)) }} {{ tokenSymbol }}
         span
           span Maximum winners:&nbsp;
           b {{ giveaway.receiverCount }}

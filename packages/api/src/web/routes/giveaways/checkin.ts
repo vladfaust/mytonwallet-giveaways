@@ -1,7 +1,7 @@
 import bodyParser from "body-parser";
 import { Router } from "express";
 import * as jose from "jose";
-import { Address, fromNano } from "ton";
+import { Address } from "ton";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { JWT_SECRET } from "../../../env.js";
@@ -189,7 +189,8 @@ export default Router()
                 bounceable: true,
               })
             : null,
-          amount: fromNano(result.giveaway.amount),
+
+          amount: result.giveaway.amount,
           receiverCount: result.giveaway.receiverCount,
           taskUrl: result.giveaway.taskUrl ?? null,
 

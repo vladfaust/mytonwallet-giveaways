@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { fromNano } from "ton";
 import { z } from "zod";
 import { GIVEAWAY_LINK_TEMPLATE } from "../../../env.js";
 import { addressFromRawBuffer } from "../../../lib/ton.js";
@@ -42,7 +41,8 @@ export default Router().get("/giveaways/:giveawayId", async (req, res) => {
       tokenAddress: giveaway.tokenAddress
         ? addressFromRawBuffer(giveaway.tokenAddress).toRawString()
         : null,
-      amount: fromNano(giveaway.amount),
+
+      amount: giveaway.amount,
       receiverCount: giveaway.receiverCount,
       taskUrl: giveaway.taskUrl ?? null,
 

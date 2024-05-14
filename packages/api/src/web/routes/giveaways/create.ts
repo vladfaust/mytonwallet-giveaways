@@ -1,7 +1,7 @@
 import bodyParser from "body-parser";
 import { Router } from "express";
 import { nanoid } from "nanoid";
-import { Address, toNano } from "ton";
+import { Address } from "ton";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 import { GIVEAWAY_LINK_TEMPLATE, GIVEAWAY_SECRET } from "../../../env.js";
@@ -26,8 +26,9 @@ export const NewGiveawaySchema = z.object({
     .nullable(),
 
   amount: z.string().refine((x) => Number(x), {
-    message: "Amount must be a positive decimal number, e.g. 1.0",
+    message: "Amount must be a number, e.g. 1 for 1 nanoton",
   }),
+
   receiverCount: z.number().int().positive(),
   taskUrl: z.string().url().nullable(),
 });
@@ -60,6 +61,15 @@ export default Router()
       return sendError(res, 400, "Invalid secret");
     }
 
+    // ADHOC: Validate the number here instead of in the schema
+    // due to Zod's limitations (can be mitigated).
+    try {
+      BigInt(body.data.giveaway.amount);
+    } catch (e) {
+      console.warn(`${body.data.giveaway.amount} is not a valid bigint number`);
+      return sendError(res, 400, "Amount must be a valid bigint number");
+    }
+
     const giveaway = await Giveaway.create({
       ...body.data.giveaway,
       tokenAddress: body.data.giveaway.tokenAddress
@@ -68,7 +78,7 @@ export default Router()
       endsAt: body.data.giveaway.endsAt
         ? new Date(body.data.giveaway.endsAt)
         : undefined,
-      amount: toNano(body.data.giveaway.amount).toString(),
+      amount: body.data.giveaway.amount,
       taskToken: body.data.giveaway.taskUrl ? nanoid() : undefined,
     });
 
